@@ -1,3 +1,5 @@
+const p = new p5();
+
 // bg color
 const bg = 0;
 
@@ -13,7 +15,6 @@ const bearingFriction = 0.8;
 // The following constants are pixels per second.
 const gravity = 1400.0;
 const maxvel = 240.0;
-const maxbearing = maxvel * 0.9;
 const accel = 900.0;
 const airBending = 375.0;
 const bearingAccel = 1200.0;
@@ -34,8 +35,9 @@ const jumpStateJumping = 1;
 const jumpStateLanded = 2;
 let jumpState = jumpStateIdle;
 
+
 function jumpControlIsEngaged() {
-  return keyIsDown(32); // spacebar
+  return p.keyIsDown(32); // spacebar
 }
 
 function clamp(v, min, max) {
@@ -44,9 +46,7 @@ function clamp(v, min, max) {
   return v;
 }
 
-function sign(x) {
-  return x < 0 ? -1 : 1;
-}
+
 
 class Dude {
   constructor(sideLength, fillColor) {
@@ -81,42 +81,42 @@ class Dude {
   }
 
   blink() {
-    if (this.blinkCumulativeTime != -1) return;
+    if (this.blinkCumulativeTime !== -1) return;
     this.blinkCumulativeTime = 0;
   }
 
   drawAt(x, y) {
-    rectMode(CENTER);
-    fill(this.fillColor);
-    noStroke();
+    p.rectMode(CENTER);
+    p.fill(this.fillColor);
+    p.noStroke();
     const s = this.sideLength;
     const half = s / 2;
     const xsquish = this.vSquish * 0.8;
     const ysquish = this.vSquish * 1.6;
-    rect(x, y - half - ysquish / 2.0,
+    p.rect(x, y - half - ysquish / 2.0,
       s - xsquish, s + ysquish, 3, 3);
 
     const eyeOffset =
-      lerp(0, half - 6, abs(this.bearing / maxvel));
+        p.lerp(0, half - 6, Math.abs(this.bearing / maxvel));
     const pupilOffset =
-      lerp(0, half - 3, abs(this.bearing / maxvel));
-    fill(255, 255, 255);
+        p.lerp(0, half - 3, Math.abs(this.bearing / maxvel));
+    p.fill(255, 255, 255);
     const eyeVCenter = y - s + 8 - this.vSquish;
-    ellipse(x + eyeOffset * sign(this.bearing),
+    p.ellipse(x + eyeOffset * Math.sign(this.bearing),
       eyeVCenter, 10, 10);
-    fill(0);
-    ellipse(x + pupilOffset * sign(this.bearing),
+    p.fill(0);
+    p.ellipse(x + pupilOffset * Math.sign(this.bearing),
       eyeVCenter, 3, 3);
 
-    rectMode(CORNERS);
-    if (this.blinkCumulativeTime != -1) {
+    p.rectMode(CORNERS);
+    if (this.blinkCumulativeTime !== -1) {
       const blinkCycle =
         this.blinkCumulativeTime / blinkCycleSeconds;
-      fill(this.fillColor);
+      p.fill(this.fillColor);
       const lidTopY = eyeVCenter - 6;
       const lidBottomY =
         lidTopY + 12 * sin(PI * blinkCycle);
-      rect(x - half + 3, lidTopY, x + half - 3, lidBottomY);
+      p.rect(x - half + 3, lidTopY, x + half - 3, lidBottomY);
     }
   }
 
@@ -166,13 +166,12 @@ class Dude {
   }
 
   move(dt) {
-    if (this.blinkCumulativeTime != -1) {
+    if (this.blinkCumulativeTime !== -1) {
       this.blinkCumulativeTime += dt;
     }
     if (this.blinkCumulativeTime >= blinkCycleSeconds) {
       this.blinkCumulativeTime = -1;
     }
-    const s = this.sideLength;
     this.pos.x += this.vel.x * dt;
     if (this.pos.x > width) {
       this.pos.x = 0;
@@ -181,7 +180,7 @@ class Dude {
     }
     this.pos.y += this.vel.y * dt;
     if (this.pos.y >= height &&
-      jumpState == jumpStateJumping) {
+      jumpState === jumpStateJumping) {
       if (!jumpControlIsEngaged()) this.blink();  // blink on hard landing
       this.vSquishVel = -this.vel.y / 5.0;
       this.pos.y = height;
@@ -189,7 +188,7 @@ class Dude {
       jumpState = jumpStateLanded;
     }
 
-    if (abs(this.vSquishVel + this.vSquish) < 0.2) {
+    if (Math.abs(this.vSquishVel + this.vSquish) < 0.2) {
       this.vSquishVel = this.vSquish = 0;
     } else {
       // squish stiffness
@@ -207,7 +206,7 @@ class Dude {
   }
 
   isInContactWithGround() {
-    return this.pos.y == height;
+    return this.pos.y === height;
   }
 }
 
@@ -215,14 +214,14 @@ let dude;
 let previousFrameMillis;
 
 function setup() {
-  createCanvas(400, 400);
+  p.createCanvas(400, 400);
   dude = new Dude(side, color(255, 119, 0)); //color(151, 84, 240)
   dude.setPos(width / 2, height);
-  previousFrameMillis = millis();
+  previousFrameMillis = p.millis();
 }
 
 function keyPressed() {
-  if (key == ' ') {
+  if (p.key === ' ') {
     if (dude.isInContactWithGround()) {
       jumpState = jumpStateJumping;
     }
@@ -230,7 +229,7 @@ function keyPressed() {
 }
 
 function keyReleased() {
-  if (key == ' ') {
+  if (p.key === ' ') {
     if (dude.isInContactWithGround()) {
       jumpState = jumpStateIdle;
     }
@@ -243,24 +242,25 @@ let instructionFadeStart = -1;
 let instructionsShowing = true;
 
 function draw() {
-  background(bg);
+  p.background(bg);
 
-  if (random() < blinkOdds) {
+  if (p.random() < blinkOdds) {
     dude.blink();
   }
 
-  const lefting = keyIsDown(LEFT_ARROW);
-  const righting = keyIsDown(RIGHT_ARROW);
+  const lefting = p.keyIsDown(p.LEFT_ARROW);
+  const righting = p.keyIsDown(p.RIGHT_ARROW);
 
-  if (instructionsShowing && instructionFadeStart == -1 &&
-    (lefting || righting ||
-      jumpState == jumpStateJumping)) {
-    instructionFadeStart = millis();
-  }
-
-  const t = millis();
+  const t = p.millis();
   const dt = (t - previousFrameMillis) / 1000.0;
   previousFrameMillis = t;
+
+  if (instructionsShowing && instructionFadeStart === -1 &&
+    (lefting || righting ||
+      jumpState === jumpStateJumping)) {
+    instructionFadeStart = t;
+  }
+
 
   const whichAccel = dude.isInContactWithGround() ? accel : airBending;
   if (lefting) {
@@ -274,7 +274,7 @@ function draw() {
   }
 
   if (dude.isInContactWithGround()) {
-    if (jumpState == jumpStateJumping) {
+    if (jumpState === jumpStateJumping) {
       dude.jump();
     }
     if (!(lefting || righting)) {
@@ -288,8 +288,8 @@ function draw() {
 
   if (instructionsShowing) {
     let textColor = 200;
-    if (instructionFadeStart != -1) {
-      const elapsed = millis() - instructionFadeStart;
+    if (instructionFadeStart !== -1) {
+      const elapsed = p.millis() - instructionFadeStart;
       if (elapsed > 1000) {
         textColor = 200 * (1 - (elapsed - 1000) / 1000.0);
       }
@@ -297,8 +297,8 @@ function draw() {
         instructionsShowing = false;
       }
     }
-    fill(textColor);
-    text("left/right arrows to move", 10, 20);
-    text("spacebar to jump", 10, 36);
+    p.fill(textColor);
+    p.text("left/right arrows to move", 10, 20);
+    p.text("spacebar to jump", 10, 36);
   }
 }
