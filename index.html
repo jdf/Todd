@@ -2,9 +2,10 @@
 <html lang="en">
 
 <head>
-    <script src="../p5.js"></script>
-    <script src="../addons/p5.sound.min.js"></script>
+    <title>jump</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.10.2/p5.js"></script>
     <meta charset="utf-8" />
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
@@ -16,11 +17,35 @@
             display: block;
             margin: auto;
         }
+
+        #main {
+            height: 100%;
+            align-content: center;
+        }
+        #foot {
+            font-family: 'Comic Neue', sans-serif;
+            font-size: 20px;
+            color: #c76812;
+            width: 400px;
+            left: calc(50% - 200px);
+            position: absolute;
+            bottom: 8px;
+            text-align: center;
+        }
+        a {
+            color: #d17212;
+        }
     </style>
 </head>
 
 <body>
-    <script src="sketch.js"></script>
+    <div id="main">
+        <script src="sketch.js"></script>
+        <div id="foot">
+            made with <a href="http://p5js.org">p5.js</a><br>
+                <a href="https://github.com/jdf/jump">source code on github</a>
+        </div>
+    </div>
 </body>
 
 </html>

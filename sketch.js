@@ -1,3 +1,4 @@
+// Create a namespace for p5.js; this is entirely for IntelliJ's benefit.
 const p = new p5();
 
 // bg color
@@ -46,8 +47,6 @@ function clamp(v, min, max) {
   return v;
 }
 
-
-
 class Dude {
   constructor(sideLength, fillColor) {
     this.sideLength = sideLength;
@@ -86,7 +85,7 @@ class Dude {
   }
 
   drawAt(x, y) {
-    p.rectMode(CENTER);
+    p.rectMode(p.CENTER);
     p.fill(this.fillColor);
     p.noStroke();
     const s = this.sideLength;
@@ -108,7 +107,7 @@ class Dude {
     p.ellipse(x + pupilOffset * Math.sign(this.bearing),
       eyeVCenter, 3, 3);
 
-    p.rectMode(CORNERS);
+    p.rectMode(p.CORNERS);
     if (this.blinkCumulativeTime !== -1) {
       const blinkCycle =
         this.blinkCumulativeTime / blinkCycleSeconds;
@@ -214,8 +213,8 @@ let dude;
 let previousFrameMillis;
 
 function setup() {
-  p.createCanvas(400, 400);
-  dude = new Dude(side, color(255, 119, 0)); //color(151, 84, 240)
+  p.createCanvas(600, 300);
+  dude = new Dude(side, p.color(255, 119, 0));
   dude.setPos(width / 2, height);
   previousFrameMillis = p.millis();
 }
@@ -255,14 +254,8 @@ function draw() {
   const dt = (t - previousFrameMillis) / 1000.0;
   previousFrameMillis = t;
 
-  if (instructionsShowing && instructionFadeStart === -1 &&
-    (lefting || righting ||
-      jumpState === jumpStateJumping)) {
-    instructionFadeStart = t;
-  }
-
-
   const whichAccel = dude.isInContactWithGround() ? accel : airBending;
+
   if (lefting) {
     dude.adjustBearing(-bearingAccel * dt);
     dude.xAccel(-whichAccel * dt);
@@ -271,14 +264,14 @@ function draw() {
     dude.xAccel(whichAccel * dt);
   } else {
     dude.applyBearingFriction();
+    if (dude.isInContactWithGround()) {
+      dude.applyFriction();
+    }
   }
 
   if (dude.isInContactWithGround()) {
     if (jumpState === jumpStateJumping) {
       dude.jump();
-    }
-    if (!(lefting || righting)) {
-      dude.applyFriction();
     }
   } else {
     dude.yAccel(gravity * dt);
@@ -287,6 +280,12 @@ function draw() {
   dude.draw();
 
   if (instructionsShowing) {
+    if (instructionFadeStart === -1 &&
+        (lefting || righting ||
+            jumpState === jumpStateJumping)) {
+      instructionFadeStart = t;
+    }
+
     let textColor = 200;
     if (instructionFadeStart !== -1) {
       const elapsed = p.millis() - instructionFadeStart;
