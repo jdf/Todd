@@ -8,7 +8,7 @@ const bg = 0;
 const side = 30;
 
 // A unitless constant that we apply to velocity while on the ground.
-const friction = 0.8;
+const friction = 0.89;
 
 // A unitless constant that we apply to bearing when not accelerating.
 const bearingFriction = 0.8;
