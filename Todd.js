@@ -8,7 +8,7 @@ const bg = 0;
 const side = 30;
 
 // A unitless constant that we apply to velocity while on the ground.
-const friction = 0.89;
+const friction = 0.83;
 
 // A unitless constant that we apply to bearing when not accelerating.
 const bearingFriction = 0.8;
@@ -17,14 +17,14 @@ const bearingFriction = 0.8;
 const gravity = 1400.0;
 const maxvel = 240.0;
 const accel = 900.0;
-const airBending = 375.0;
+const airBending = 575.0;
 const bearingAccel = 1200.0;
-const jumpImpulse = -550.0;
+const jumpImpulse = -350.0;
 
 const maxSquishVel = 80.0;
 
 // Max vertical velocity while holding down jump.
-const jumpTerminalVelocity = 250.0;
+const jumpTerminalVelocity = 350.0;
 const terminalVelocity = 550.0;
 
 // Blinking.
@@ -42,7 +42,22 @@ const controller = {
 const jumpStateIdle = 0;
 const jumpStateJumping = 1;
 const jumpStateLanded = 2;
-let jumpState = jumpStateIdle;
+
+class JumpState {
+  constructor() {
+    this.state = jumpStateIdle;
+  }
+
+  setState(s) {
+    this.state = s;
+  }
+
+  getState() {
+    return this.state;
+  }
+}
+
+const jumpState = new JumpState();
 
 let shouldJump = false;
 
@@ -73,7 +88,7 @@ class Platform {
 }
 
 const platforms = [
-  new Platform(100, 130, 250, 150, 'rgb(190, 190, 255)'),
+  new Platform(100, 110, 250, 130, 'rgb(190, 190, 255)'),
   new Platform(300, 210, 500, 230, 'rgb(190, 255, 190)'),
 ];
 
@@ -100,6 +115,33 @@ class Dude {
     this.vSquishVel = 0;
 
     this.blinkCumulativeTime = -1;
+
+    // A quantity >= 0 when jumpState is jumpStateJumping.
+    // Used in calculating gravity during jump.
+    this.initialJumpSpeed = -1;
+  }
+
+  // Maps an x-speed to an integer in [0,2].
+  speedStepFunction(x) {
+    if (x < maxvel * .333) {
+      return 0;
+    }
+    if (x < maxvel * .666) {
+      return 1;
+    }
+    return 2;
+  }
+
+  getJumpImpulse(speed) {
+    return jumpImpulse * [1.0, 1.0, 1.2][this.speedStepFunction(speed)];
+  }
+
+  getGravity() {
+    if (this.vel.y < 0) {
+      // going up!
+      return gravity * (controller.jump ? 0.55 : 1.0);
+    }
+    return gravity;
   }
 
   setPos(x, y) {
@@ -183,7 +225,9 @@ class Dude {
   }
 
   jump() {
-    this.vel.y = jumpImpulse;
+    jumpState.setState(jumpStateJumping);
+    this.initialJumpSpeed = Math.abs(this.vel.x);
+    this.vel.y = this.getJumpImpulse(this.initialJumpSpeed);
     this.vSquishVel = maxSquishVel;
   }
 
@@ -222,35 +266,59 @@ class Dude {
   }
 
   move(dt) {
+    this.yAccel(this.getGravity() * dt);
+    if (this.isInContactWithGround()) {
+      if (shouldJump) {
+        this.jump();
+        shouldJump = false;
+      }
+    }
+
     if (this.blinkCumulativeTime !== -1) {
       this.blinkCumulativeTime += dt;
     }
     if (this.blinkCumulativeTime >= blinkCycleSeconds) {
       this.blinkCumulativeTime = -1;
     }
+
     this.pos.x += this.vel.x * dt;
     if (this.pos.x > width) {
       this.pos.x = 0;
     } else if (this.pos.x < 0) {
       this.pos.x = width;
     }
-    this.pos.y += this.vel.y * dt;
 
-    // Check for collisions.
-    const contactHeight = this.getContactHeight();
-    if (jumpState === jumpStateJumping) {
-      if (contactHeight !== -1) {
+    // Collisions.
+    const currentY = this.pos.y;
+    this.pos.y = currentY + this.vel.y * dt;
+    let colliding = false;
+    if (this.pos.y >= height) {
+      colliding = true;
+      this.pos.y = height;
+    } else {
+      for (const plat of platforms) {
+        if (currentY <= plat.top && this.pos.y >= plat.top &&
+            this.right() >= plat.left && this.left() <= plat.right) {
+          colliding = true;
+          this.pos.y = plat.top;
+          break;
+        }
+      }
+    }
+    if (colliding) {
+      this.vel.y = 0;
+    }
+    if (jumpState.getState() === jumpStateJumping) {
+      if (colliding) {
         // blink on hard landing, i.e., if not gliding
         if (!controller.jump) {
           this.blink();
         }
         this.vSquishVel = -this.vel.y / 5.0;
-        this.pos.y = contactHeight;
-        this.vel.y = 0;
-        jumpState = jumpStateLanded;
+        jumpState.setState(controller.jump ? jumpStateLanded : jumpStateIdle);
       }
-    } else if (contactHeight === -1) {
-      jumpState = jumpStateJumping;  // we fell off a platform
+    } else if (!colliding) {
+      jumpState.setState(jumpStateJumping);  // we fell off a platform
       // Squish, but, if already squishing, squish in that direction.
       if (maxSquishVel > Math.abs(this.vSquishVel)) {
         this.vSquishVel = maxSquishVel * Math.sign(this.vSquishVel);
@@ -313,7 +381,7 @@ function keyPressed() {
 function keyReleased() {
   setControllerState(false);
   if (p.key === ' ' && dude.isInContactWithGround()) {
-    jumpState = jumpStateIdle;
+    jumpState.setState(jumpStateIdle);
   }
 }
 
@@ -351,22 +419,13 @@ function draw() {
     }
   }
 
-  if (dude.isInContactWithGround()) {
-    if (shouldJump) {
-      dude.jump();
-      shouldJump = false;
-      jumpState = jumpStateJumping;
-    }
-  } else {
-    dude.yAccel(gravity * dt);
-  }
   dude.move(dt);
   dude.draw();
 
   if (instructionsShowing) {
     if (instructionFadeStart === -1 &&
         (controller.left || controller.right ||
-            jumpState === jumpStateJumping)) {
+            jumpState.getState() === jumpStateJumping)) {
       instructionFadeStart = t;
     }
 
