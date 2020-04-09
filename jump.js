@@ -28,7 +28,15 @@ const jumpTerminalVelocity = 250.0;
 const terminalVelocity = 550.0;
 
 // Blinking.
+const blinkOdds = 1 / 300.0;
 const blinkCycleSeconds = 0.25;
+
+// Current state of controller "buttons".
+const controller = {
+  left: false,
+  right: false,
+  jump: false,
+};
 
 // Jump state.
 const jumpStateIdle = 0;
@@ -37,10 +45,6 @@ const jumpStateLanded = 2;
 let jumpState = jumpStateIdle;
 
 let shouldJump = false;
-
-function jumpControlIsEngaged() {
-  return p.keyIsDown(32); // spacebar
-}
 
 function clamp(v, min, max) {
   if (v < min) {
@@ -172,8 +176,7 @@ class Dude {
 
   yAccel(a) {
     this.vel.y = this.vel.y + a;
-    const term = jumpControlIsEngaged() ?
-        jumpTerminalVelocity : terminalVelocity;
+    const term = controller.jump ? jumpTerminalVelocity : terminalVelocity;
     if (this.vel.y > term) {
       this.vel.y = term;
     }
@@ -237,9 +240,10 @@ class Dude {
     const contactHeight = this.getContactHeight();
     if (jumpState === jumpStateJumping) {
       if (contactHeight !== -1) {
-        if (!jumpControlIsEngaged()) {
+        // blink on hard landing, i.e., if not gliding
+        if (!controller.jump) {
           this.blink();
-        }  // blink on hard landing
+        }
         this.vSquishVel = -this.vel.y / 5.0;
         this.pos.y = contactHeight;
         this.vel.y = 0;
@@ -247,12 +251,14 @@ class Dude {
       }
     } else if (contactHeight === -1) {
       jumpState = jumpStateJumping;  // we fell off a platform
+      // Squish, but, if already squishing, squish in that direction.
       if (maxSquishVel > Math.abs(this.vSquishVel)) {
         this.vSquishVel = maxSquishVel * Math.sign(this.vSquishVel);
       }
     }
 
     if (Math.abs(this.vSquishVel + this.vSquish) < 0.2) {
+      // Squish damping when the energy is below threshold.
       this.vSquishVel = this.vSquish = 0;
     } else {
       // squish stiffness
@@ -270,7 +276,7 @@ class Dude {
   }
 
   isInContactWithGround() {
-    return this.getContactHeight() !== -1;  
+    return this.getContactHeight() !== -1;
   }
 }
 
@@ -285,25 +291,31 @@ function setup() {
   previousFrameMillis = p.millis();
 }
 
+function setControllerState(isDown) {
+  if (p.key === ' ') {
+    controller.jump = isDown;
+  } else if (p.keyCode === p.LEFT_ARROW) {
+    controller.left = isDown;
+  } else if (p.keyCode === p.RIGHT_ARROW) {
+    controller.right = isDown;
+  }
+}
+
 // noinspection JSUnusedLocalSymbols
 function keyPressed() {
-  if (p.key === ' ') {
-    if (dude.isInContactWithGround()) {
-      shouldJump = true;
-    }
+  setControllerState(true);
+  if (p.key === ' ' && dude.isInContactWithGround()) {
+    shouldJump = true;
   }
 }
 
 // noinspection JSUnusedLocalSymbols
 function keyReleased() {
-  if (p.key === ' ') {
-    if (dude.isInContactWithGround()) {
-      jumpState = jumpStateIdle;
-    }
+  setControllerState(false);
+  if (p.key === ' ' && dude.isInContactWithGround()) {
+    jumpState = jumpStateIdle;
   }
 }
-
-const blinkOdds = 1 / 250.0;
 
 let instructionFadeStart = -1;
 let instructionsShowing = true;
@@ -320,19 +332,16 @@ function draw() {
     dude.blink();
   }
 
-  const lefting = p.keyIsDown(p.LEFT_ARROW);
-  const righting = p.keyIsDown(p.RIGHT_ARROW);
-
   const t = p.millis();
   const dt = (t - previousFrameMillis) / 1000.0;
   previousFrameMillis = t;
 
   const whichAccel = dude.isInContactWithGround() ? accel : airBending;
 
-  if (lefting) {
+  if (controller.left) {
     dude.adjustBearing(-bearingAccel * dt);
     dude.xAccel(-whichAccel * dt);
-  } else if (righting) {
+  } else if (controller.right) {
     dude.adjustBearing(bearingAccel * dt);
     dude.xAccel(whichAccel * dt);
   } else {
@@ -356,7 +365,7 @@ function draw() {
 
   if (instructionsShowing) {
     if (instructionFadeStart === -1 &&
-        (lefting || righting ||
+        (controller.left || controller.right ||
             jumpState === jumpStateJumping)) {
       instructionFadeStart = t;
     }
