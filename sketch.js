@@ -19,7 +19,7 @@ const maxvel = 240.0;
 const accel = 900.0;
 const airBending = 375.0;
 const bearingAccel = 1200.0;
-const jumpImpulse = -700.0;
+const jumpImpulse = -550.0;
 
 const maxSquishVel = 80.0;
 
@@ -36,16 +36,42 @@ const jumpStateJumping = 1;
 const jumpStateLanded = 2;
 let jumpState = jumpStateIdle;
 
+let shouldJump = false;
 
 function jumpControlIsEngaged() {
   return p.keyIsDown(32); // spacebar
 }
 
 function clamp(v, min, max) {
-  if (v < min) return min;
-  if (v > max) return max;
+  if (v < min) {
+    return min;
+  }
+  if (v > max) {
+    return max;
+  }
   return v;
 }
+
+class Platform {
+  constructor(left, top, right, bottom, fillColor) {
+    this.left = left;
+    this.top = top;
+    this.right = right;
+    this.bottom = bottom;
+    this.fillColor = fillColor;
+  }
+
+  draw() {
+    p.rectMode(p.CORNERS);
+    p.fill(color(this.fillColor));
+    p.rect(this.left, this.top, this.right, this.bottom, 3, 3);
+  }
+}
+
+const platforms = [
+  new Platform(100, 130, 250, 150, 'rgb(190, 190, 255)'),
+  new Platform(300, 210, 500, 230, 'rgb(190, 255, 190)'),
+];
 
 class Dude {
   constructor(sideLength, fillColor) {
@@ -80,7 +106,9 @@ class Dude {
   }
 
   blink() {
-    if (this.blinkCumulativeTime !== -1) return;
+    if (this.blinkCumulativeTime !== -1) {
+      return;
+    }
     this.blinkCumulativeTime = 0;
   }
 
@@ -93,7 +121,7 @@ class Dude {
     const xsquish = this.vSquish * 0.8;
     const ysquish = this.vSquish * 1.6;
     p.rect(x, y - half - ysquish / 2.0,
-      s - xsquish, s + ysquish, 3, 3);
+        s - xsquish, s + ysquish, 3, 3);
 
     const eyeOffset =
         p.lerp(0, half - 6, Math.abs(this.bearing / maxvel));
@@ -102,19 +130,19 @@ class Dude {
     p.fill(255, 255, 255);
     const eyeVCenter = y - s + 8 - this.vSquish;
     p.ellipse(x + eyeOffset * Math.sign(this.bearing),
-      eyeVCenter, 10, 10);
+        eyeVCenter, 10, 10);
     p.fill(0);
     p.ellipse(x + pupilOffset * Math.sign(this.bearing),
-      eyeVCenter, 3, 3);
+        eyeVCenter, 3, 3);
 
     p.rectMode(p.CORNERS);
     if (this.blinkCumulativeTime !== -1) {
       const blinkCycle =
-        this.blinkCumulativeTime / blinkCycleSeconds;
+          this.blinkCumulativeTime / blinkCycleSeconds;
       p.fill(this.fillColor);
       const lidTopY = eyeVCenter - 6;
       const lidBottomY =
-        lidTopY + 12 * sin(PI * blinkCycle);
+          lidTopY + 12 * Math.sin(Math.PI * blinkCycle);
       p.rect(x - half + 3, lidTopY, x + half - 3, lidBottomY);
     }
   }
@@ -139,13 +167,13 @@ class Dude {
 
   adjustBearing(a) {
     this.bearing =
-      clamp(this.bearing + a, -maxvel, maxvel);
+        clamp(this.bearing + a, -maxvel, maxvel);
   }
 
   yAccel(a) {
     this.vel.y = this.vel.y + a;
     const term = jumpControlIsEngaged() ?
-      jumpTerminalVelocity : terminalVelocity;
+        jumpTerminalVelocity : terminalVelocity;
     if (this.vel.y > term) {
       this.vel.y = term;
     }
@@ -164,6 +192,32 @@ class Dude {
     this.bearing *= bearingFriction;
   }
 
+  left() {
+    return this.pos.x - this.sideLength / 2;
+  }
+
+  right() {
+    return this.pos.x + this.sideLength / 2;
+  }
+
+  // Y value of surface top or -1 for not landing.
+  getContactHeight() {
+    if (this.pos.y >= height) {
+      return height;
+    }
+    // can't land if we're moving up
+    if (this.vel.y < 0) {
+      return -1;
+    }
+    for (const plat of platforms) {
+      if (this.pos.y >= plat.top && this.pos.y <= plat.bottom && this.right()
+          >= plat.left && this.left() <= plat.right) {
+        return plat.top;
+      }
+    }
+    return -1;
+  }
+
   move(dt) {
     if (this.blinkCumulativeTime !== -1) {
       this.blinkCumulativeTime += dt;
@@ -178,13 +232,24 @@ class Dude {
       this.pos.x = width;
     }
     this.pos.y += this.vel.y * dt;
-    if (this.pos.y >= height &&
-      jumpState === jumpStateJumping) {
-      if (!jumpControlIsEngaged()) this.blink();  // blink on hard landing
-      this.vSquishVel = -this.vel.y / 5.0;
-      this.pos.y = height;
-      this.vel.y = 0;
-      jumpState = jumpStateLanded;
+
+    // Check for collisions.
+    const contactHeight = this.getContactHeight();
+    if (jumpState === jumpStateJumping) {
+      if (contactHeight !== -1) {
+        if (!jumpControlIsEngaged()) {
+          this.blink();
+        }  // blink on hard landing
+        this.vSquishVel = -this.vel.y / 5.0;
+        this.pos.y = contactHeight;
+        this.vel.y = 0;
+        jumpState = jumpStateLanded;
+      }
+    } else if (contactHeight === -1) {
+      jumpState = jumpStateJumping;  // we fell off a platform
+      if (maxSquishVel > Math.abs(this.vSquishVel)) {
+        this.vSquishVel = maxSquishVel * Math.sign(this.vSquishVel);
+      }
     }
 
     if (Math.abs(this.vSquishVel + this.vSquish) < 0.2) {
@@ -197,21 +262,22 @@ class Dude {
       const squishForce = -k * this.vSquish;
       const dampingForce = damping * this.vSquishVel;
       this.vSquishVel +=
-        (squishForce - dampingForce) * dt;
+          (squishForce - dampingForce) * dt;
       this.vSquishVel = clamp(
-        this.vSquishVel, -maxSquishVel, maxSquishVel);
+          this.vSquishVel, -maxSquishVel, maxSquishVel);
       this.vSquish += this.vSquishVel * dt;
     }
   }
 
   isInContactWithGround() {
-    return this.pos.y === height;
+    return this.getContactHeight() !== -1;  
   }
 }
 
 let dude;
 let previousFrameMillis;
 
+// noinspection JSUnusedLocalSymbols
 function setup() {
   p.createCanvas(600, 300);
   dude = new Dude(side, p.color(255, 119, 0));
@@ -219,14 +285,16 @@ function setup() {
   previousFrameMillis = p.millis();
 }
 
+// noinspection JSUnusedLocalSymbols
 function keyPressed() {
   if (p.key === ' ') {
     if (dude.isInContactWithGround()) {
-      jumpState = jumpStateJumping;
+      shouldJump = true;
     }
   }
 }
 
+// noinspection JSUnusedLocalSymbols
 function keyReleased() {
   if (p.key === ' ') {
     if (dude.isInContactWithGround()) {
@@ -240,8 +308,13 @@ const blinkOdds = 1 / 250.0;
 let instructionFadeStart = -1;
 let instructionsShowing = true;
 
+// noinspection JSUnusedLocalSymbols
 function draw() {
   p.background(bg);
+
+  for (const platform of platforms) {
+    platform.draw();
+  }
 
   if (p.random() < blinkOdds) {
     dude.blink();
@@ -270,8 +343,10 @@ function draw() {
   }
 
   if (dude.isInContactWithGround()) {
-    if (jumpState === jumpStateJumping) {
+    if (shouldJump) {
       dude.jump();
+      shouldJump = false;
+      jumpState = jumpStateJumping;
     }
   } else {
     dude.yAccel(gravity * dt);
