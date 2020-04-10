@@ -147,8 +147,8 @@ class TumbleAnimation {
   }
 
   angleFor(height) {
-    if (height < this.startHeight) {
-      throw new Error(`expected height >= ${this.startHeight}, got ${height}`);
+    if (height <= this.startHeight) {
+      return this.startAngle;
     }
 
     if (height >= this.targetHeight) {
