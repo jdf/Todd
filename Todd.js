@@ -31,6 +31,9 @@ const terminalVelocity = 550.0;
 const blinkOdds = 1 / 300.0;
 const blinkCycleSeconds = 0.25;
 
+// Tumbling
+const tumblePlatformMargin = 4;
+
 // Current state of controller "buttons".
 const controller = {
   left: false,
@@ -91,6 +94,47 @@ const platforms = [
   new Platform(100, 110, 250, 130, 'rgb(190, 190, 255)'),
   new Platform(300, 210, 500, 230, 'rgb(190, 255, 190)'),
 ];
+platforms.sort((a, b) => {
+  return a.top === b.top ? 0 : Math.sign(a.top - b.top);
+});
+
+const tumbleLevels = [];
+
+class TumbleAnimation {
+  constructor(sign, startHeight) {
+    this.sign = sign;
+    this.startHeight = startHeight;
+    this.startAngle = 0;
+    this.targetHeight = this.nextTumbleHeight(startHeight);
+  }
+
+  nextTumbleHeight(height) {
+    for (const h of tumbleLevels) {
+      if (h > height) {
+        return h;
+      }
+    }
+    throw new Error(`nowhere to tumble to from ${height}`);
+  }
+
+  angleFor(height) {
+    if (height < this.startHeight) {
+      throw new Error(`expected height >= ${this.startHeight}, got ${height}`);
+    }
+
+    if (height >= this.targetHeight) {
+      this.startHeight = this.targetHeight;
+      this.targetHeight = this.nextTumbleHeight(this.startHeight);
+      this.startAngle += (Math.PI / 2.0) * this.sign;
+    }
+
+    const totalDelta = this.targetHeight - this.startHeight;
+    const delta = height - this.startHeight;
+    const ratio = delta / totalDelta;
+
+    return this.startAngle + ratio * (Math.PI / 2.0) * this.sign;
+  }
+}
 
 class Dude {
   constructor(sideLength, fillColor) {
@@ -119,6 +163,8 @@ class Dude {
     // A quantity >= 0 when jumpState is jumpStateJumping.
     // Used in calculating gravity during jump.
     this.initialJumpSpeed = -1;
+
+    this.tumbleAnimation = null;
   }
 
   // Maps an x-speed to an integer in [0,2].
@@ -162,35 +208,38 @@ class Dude {
     p.rectMode(p.CENTER);
     p.fill(this.fillColor);
     p.noStroke();
+
     const s = this.sideLength;
     const half = s / 2;
     const xsquish = this.vSquish * 0.8;
     const ysquish = this.vSquish * 1.6;
-    p.rect(x, y - half - ysquish / 2.0,
-        s - xsquish, s + ysquish, 3, 3);
 
-    const eyeOffset =
-        p.lerp(0, half - 6, Math.abs(this.bearing / maxvel));
-    const pupilOffset =
-        p.lerp(0, half - 3, Math.abs(this.bearing / maxvel));
+    p.push();
+    p.translate(x, y);
+    if (this.tumbleAnimation != null) {
+      p.translate(0, -half);
+      p.rotate(this.tumbleAnimation.angleFor(this.pos.y));
+      p.translate(0, half);
+    }
+    p.rect(0, -(half + ysquish / 2.0), s - xsquish, s + ysquish, 3, 3);
+
+    const eyeOffset = p.lerp(0, half - 6, Math.abs(this.bearing / maxvel));
+    const pupilOffset = p.lerp(0, half - 3, Math.abs(this.bearing / maxvel));
     p.fill(255, 255, 255);
-    const eyeVCenter = y - s + 8 - this.vSquish;
-    p.ellipse(x + eyeOffset * Math.sign(this.bearing),
-        eyeVCenter, 10, 10);
+    const eyeVCenter = -s + 8 - this.vSquish;
+    p.ellipse(eyeOffset * Math.sign(this.bearing), eyeVCenter, 10, 10);
     p.fill(0);
-    p.ellipse(x + pupilOffset * Math.sign(this.bearing),
-        eyeVCenter, 3, 3);
+    p.ellipse(pupilOffset * Math.sign(this.bearing), eyeVCenter, 3, 3);
 
     p.rectMode(p.CORNERS);
     if (this.blinkCumulativeTime !== -1) {
-      const blinkCycle =
-          this.blinkCumulativeTime / blinkCycleSeconds;
+      const blinkCycle = this.blinkCumulativeTime / blinkCycleSeconds;
       p.fill(this.fillColor);
       const lidTopY = eyeVCenter - 6;
-      const lidBottomY =
-          lidTopY + 12 * Math.sin(Math.PI * blinkCycle);
-      p.rect(x - half + 3, lidTopY, x + half - 3, lidBottomY);
+      const lidBottomY = lidTopY + 12 * Math.sin(Math.PI * blinkCycle);
+      p.rect(-half + 3, lidTopY, half - 3, lidBottomY);
     }
+    p.pop();
   }
 
   draw() {
@@ -298,7 +347,8 @@ class Dude {
     } else {
       for (const plat of platforms) {
         if (currentY <= plat.top && this.pos.y >= plat.top &&
-            this.right() >= plat.left && this.left() <= plat.right) {
+            this.right() >= plat.left + tumblePlatformMargin &&
+            this.left() <= plat.right - tumblePlatformMargin) {
           colliding = true;
           this.pos.y = plat.top;
           break;
@@ -308,6 +358,7 @@ class Dude {
     const oldvel = this.vel.y;
     if (colliding) {
       this.vel.y = 0;
+      this.tumbleAnimation = null;
     }
     if (jumpState.getState() === jumpStateJumping) {
       if (colliding) {
@@ -324,6 +375,13 @@ class Dude {
       if (maxSquishVel > Math.abs(this.vSquishVel)) {
         this.vSquishVel = maxSquishVel * Math.sign(this.vSquishVel);
       }
+      let sign = Math.sign(this.vel.x);
+      if (controller.left) {
+        sign = -1;
+      } else if (controller.right) {
+        sign = 1;
+      }
+      this.tumbleAnimation = new TumbleAnimation(sign, this.pos.y);
     }
 
     if (Math.abs(this.vSquishVel + this.vSquish) < 0.2) {
@@ -358,6 +416,15 @@ function setup() {
   dude = new Dude(side, p.color(255, 119, 0));
   dude.setPos(width / 2, height);
   previousFrameMillis = p.millis();
+
+  for (const plat of platforms) {
+    if (tumbleLevels.length > 0 &&
+        tumbleLevels[tumbleLevels.length - 1] === plat.top) {
+      continue;
+    }
+    tumbleLevels.push(plat.top);
+  }
+  tumbleLevels.push(height);
 }
 
 function setControllerState(isDown) {
