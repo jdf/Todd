@@ -31,9 +31,6 @@ const terminalVelocity = 550.0;
 const blinkOdds = 1 / 300.0;
 const blinkCycleSeconds = 0.25;
 
-// Tumbling
-const tumblePlatformMargin = 4;
-
 // Eye centering speed for tumbling/landing.
 const eyeCenteringDurationSeconds = 0.25;
 
@@ -201,15 +198,22 @@ class Dude {
     this.eyeCenteringAnimation = null;
   }
 
-  // Maps an x-speed to an integer in [0,2].
-  speedStepFunction(x) {
-    if (x < maxvel * .333) {
+  // Maps an x-velocity to an integer in [0,2].
+  speedStepFunction(xVel) {
+    xVel = Math.abs(xVel);
+    if (xVel < maxvel * .333) {
       return 0;
     }
-    if (x < maxvel * .666) {
+    if (xVel < maxvel * .666) {
       return 1;
     }
     return 2;
+  }
+
+  // The platform has a width differing from its apparent width, depending on
+  // your speed. The slower you are, the narrower the platform is.
+  platformMargin(xVel) {
+    return [8, 0, -5][this.speedStepFunction(xVel)];
   }
 
   getJumpImpulse(speed) {
@@ -346,9 +350,12 @@ class Dude {
     if (this.vel.y < 0) {
       return -1;
     }
+    const margin = this.platformMargin(this.vel.x);
     for (const plat of platforms) {
-      if (this.pos.y >= plat.top && this.pos.y <= plat.bottom && this.right()
-          >= plat.left && this.left() <= plat.right) {
+      if (this.pos.y >= plat.top &&
+          this.pos.y <= plat.bottom &&
+          this.right() >= plat.left + margin &&
+          this.left() <= plat.right - margin) {
         return plat.top;
       }
     }
@@ -386,10 +393,11 @@ class Dude {
       colliding = true;
       this.pos.y = height;
     } else {
+      const margin = this.platformMargin(this.vel.x);
       for (const plat of platforms) {
         if (currentY <= plat.top && this.pos.y >= plat.top &&
-            this.right() >= plat.left + tumblePlatformMargin &&
-            this.left() <= plat.right - tumblePlatformMargin) {
+            this.right() >= plat.left + margin &&
+            this.left() <= plat.right - margin) {
           colliding = true;
           this.pos.y = plat.top;
           break;
