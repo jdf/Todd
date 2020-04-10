@@ -305,16 +305,17 @@ class Dude {
         }
       }
     }
+    const oldvel = this.vel.y;
     if (colliding) {
       this.vel.y = 0;
     }
     if (jumpState.getState() === jumpStateJumping) {
       if (colliding) {
-        // blink on hard landing, i.e., if not gliding
-        if (!controller.jump) {
+        // blink on hard landing
+        if (oldvel > terminalVelocity * 0.95) {
           this.blink();
         }
-        this.vSquishVel = -this.vel.y / 5.0;
+        this.vSquishVel = -oldvel / 5.0;
         jumpState.setState(controller.jump ? jumpStateLanded : jumpStateIdle);
       }
     } else if (!colliding) {
