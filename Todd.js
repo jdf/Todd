@@ -34,6 +34,9 @@ const blinkCycleSeconds = 0.25;
 // Tumbling
 const tumblePlatformMargin = 4;
 
+// Eye centering speed for tumbling/landing.
+const eyeCenteringDurationSeconds = 0.25;
+
 // Current state of controller "buttons".
 const controller = {
   left: false,
@@ -74,6 +77,10 @@ function clamp(v, min, max) {
   return v;
 }
 
+function lerpVec(v, w, t) {
+  return {x: p.lerp(v.x, w.x, t), y: p.lerp(v.y, w.y, t)};
+}
+
 class Platform {
   constructor(left, top, right, bottom, fillColor) {
     this.left = left;
@@ -99,6 +106,28 @@ platforms.sort((a, b) => {
 });
 
 const tumbleLevels = [];
+
+class TimeBasedAnimation {
+  constructor(startValue, endValue, durationSeconds) {
+    this.startValue = startValue;
+    this.endValue = endValue;
+    this.startTime = p.millis();
+    this.endTime = Math.round(this.startTime + durationSeconds * 1000);
+  }
+
+  isFinished() {
+    return p.millis() >= this.endTime;
+  }
+
+  value() {
+    const t = p.millis();
+    if (t > this.endTime) {
+      return this.endValue;
+    }
+    return p.lerp(this.startValue, this.endValue,
+        (t - this.startTime) / (this.endTime - this.startTime));
+  }
+}
 
 class TumbleAnimation {
   constructor(sign, startHeight) {
@@ -164,7 +193,12 @@ class Dude {
     // Used in calculating gravity during jump.
     this.initialJumpSpeed = -1;
 
+    // Tumbling!
     this.tumbleAnimation = null;
+    // During tumbling, this animates to 1, which means completely centered.
+    // When tumbling ends, this animates to 0, which means "where it wants to be".
+    this.eyeCentering = 0;
+    this.eyeCenteringAnimation = null;
   }
 
   // Maps an x-speed to an integer in [0,2].
@@ -223,19 +257,26 @@ class Dude {
     }
     p.rect(0, -(half + ysquish / 2.0), s - xsquish, s + ysquish, 3, 3);
 
+    const eyeVCenter = -s + 8 - this.vSquish;
     const eyeOffset = p.lerp(0, half - 6, Math.abs(this.bearing / maxvel));
     const pupilOffset = p.lerp(0, half - 3, Math.abs(this.bearing / maxvel));
+    let eyePos = {x: eyeOffset * Math.sign(this.bearing), y: eyeVCenter};
+    let pupilPos = {x: pupilOffset * Math.sign(this.bearing), y: eyeVCenter};
+    if (this.eyeCentering !== 0) {
+      const center = {x: 0, y: -half};
+      eyePos = lerpVec(eyePos, center, this.eyeCentering);
+      pupilPos = lerpVec(pupilPos, center, this.eyeCentering);
+    }
     p.fill(255, 255, 255);
-    const eyeVCenter = -s + 8 - this.vSquish;
-    p.ellipse(eyeOffset * Math.sign(this.bearing), eyeVCenter, 10, 10);
+    p.ellipse(eyePos.x, eyePos.y, 10, 10);
     p.fill(0);
-    p.ellipse(pupilOffset * Math.sign(this.bearing), eyeVCenter, 3, 3);
+    p.ellipse(pupilPos.x, pupilPos.y, 3, 3);
 
     p.rectMode(p.CORNERS);
     if (this.blinkCumulativeTime !== -1) {
       const blinkCycle = this.blinkCumulativeTime / blinkCycleSeconds;
       p.fill(this.fillColor);
-      const lidTopY = eyeVCenter - 6;
+      const lidTopY = eyePos.y - 6;
       const lidBottomY = lidTopY + 12 * Math.sin(Math.PI * blinkCycle);
       p.rect(-half + 3, lidTopY, half - 3, lidBottomY);
     }
@@ -362,6 +403,8 @@ class Dude {
     }
     if (jumpState.getState() === jumpStateJumping) {
       if (colliding) {
+        this.eyeCenteringAnimation = new TimeBasedAnimation(this.eyeCentering,
+            0, eyeCenteringDurationSeconds);
         // blink on hard landing
         if (oldvel > terminalVelocity * 0.95) {
           this.blink();
@@ -382,6 +425,8 @@ class Dude {
         sign = 1;
       }
       this.tumbleAnimation = new TumbleAnimation(sign, this.pos.y);
+      this.eyeCenteringAnimation = new TimeBasedAnimation(this.eyeCentering,
+          1, eyeCenteringDurationSeconds);
     }
 
     if (Math.abs(this.vSquishVel + this.vSquish) < 0.2) {
@@ -399,6 +444,10 @@ class Dude {
       this.vSquishVel = clamp(
           this.vSquishVel, -maxSquishVel, maxSquishVel);
       this.vSquish += this.vSquishVel * dt;
+    }
+
+    if (this.eyeCenteringAnimation != null) {
+      this.eyeCentering = this.eyeCenteringAnimation.value();
     }
   }
 
