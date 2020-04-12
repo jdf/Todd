@@ -1,3 +1,4 @@
+import p from './runtime.js'
 export default class Platform {
   constructor(left, top, right, bottom, fillColor) {
     this.left = left;

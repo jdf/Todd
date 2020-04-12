@@ -1,3 +1,5 @@
+import p from './runtime.js';
+
 export function clamp(v, min, max) {
   if (v < min) {
     return min;
@@ -27,19 +29,23 @@ export function lerpVec(v, w, t) {
 }
 
 export class TimeBasedAnimation {
-  constructor(startValue, endValue, startMillis, durationSeconds) {
+  constructor(startValue, endValue, durationSeconds) {
     this.startValue = startValue;
     this.endValue = endValue;
-    this.startMillis = startMillis;
-    this.endTime = Math.round(this.startTime + durationSeconds * 1000);
+    this.startMillis = p.millis();
+    this.endMillis = Math.round(this.startMillis + durationSeconds * 1000);
   }
 
-  value(t) {
-    if (t > this.endTime) {
+  isDone() {
+    return p.millis() >= this.endMillis;
+  }
+
+  value() {
+    if (this.isDone()) {
       return this.endValue;
     }
     return lerp(this.startValue, this.endValue,
-        (t - this.startTime) / (this.endTime - this.startTime));
+        (p.millis() - this.startMillis) / (this.endMillis - this.startMillis));
   }
 }
 

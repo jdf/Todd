@@ -1,4 +1,4 @@
-import * as Constants from './constants';
+import * as Constants from './constants.js';
 import Platform from './platform.js';
 
 // Current state of controller "buttons".
@@ -8,26 +8,21 @@ export const controller = {
   jump: false,
 };
 
-// Jump state.
-export const jumpStateIdle = 0;
-export const jumpStateJumping = 1;
-export const jumpStateLanded = 2;
+export const JumpState = {
+  idle: 'idle',
+  jumping: 'jumping',
+  landed: 'landed',
+};
 
-class JumpState {
-  constructor() {
-    this.state = jumpStateIdle;
-  }
+let jumpState = JumpState.idle;
 
-  setState(s) {
-    this.state = s;
-  }
-
-  getState() {
-    return this.state;
-  }
+export function setJumpState(s) {
+  jumpState = s;
 }
 
-export const jumpState = new JumpState();
+export function isJumpJumping() { return jumpState === JumpState.jumping; }
+export function isJumpLanded() { return jumpState === JumpState.landed; }
+export function isJumpIdle() { return jumpState === JumpState.idle; }
 
 export const platforms = [
   new Platform(100, 110, 250, 130, 'rgb(190, 190, 255)'),
@@ -39,21 +34,23 @@ platforms.sort((a, b) => {
 
 export const tumbleLevels = [];
 
-for (const plat of platforms) {
-  if (tumbleLevels.length > 0 &&
-      tumbleLevels[tumbleLevels.length - 1] === plat.top) {
-    continue;
+export function setup(worldHeight) {
+  for (const plat of platforms) {
+    if (tumbleLevels.length > 0 &&
+        tumbleLevels[tumbleLevels.length - 1] === plat.top) {
+      continue;
+    }
+    tumbleLevels.push(plat.top);
   }
-  tumbleLevels.push(plat.top);
+  tumbleLevels.push(worldHeight);
 }
-tumbleLevels.push(height);
 
 export function setControllerState(keyCode, isDown) {
-  if (whichKey === Constants.controllerKeyCodes.jump) {
+  if (keyCode === Constants.controllerKeyCodes.jump) {
     controller.jump = isDown;
-  } else if (whichKeyCode === Constants.controllerKeyCodes.left) {
+  } else if (keyCode === Constants.controllerKeyCodes.left) {
     controller.left = isDown;
-  } else if (whichKeyCode === Constants.controllerKeyCodes.right) {
+  } else if (keyCode === Constants.controllerKeyCodes.right) {
     controller.right = isDown;
   }
 }
