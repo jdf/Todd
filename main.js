@@ -1,7 +1,44 @@
 import p from './runtime.js';
 import * as Constants from './constants.js';
+import {
+  clamp,
+  lerpVec,
+  TimeBasedAnimation
+} from './util.js';
 
 let shouldJump = false;
+
+const platforms = [
+  new Platform(100, 110, 250, 130, 'rgb(190, 190, 255)'),
+  new Platform(300, 210, 500, 230, 'rgb(190, 255, 190)'),
+];
+platforms.sort((a, b) => {
+  return a.top === b.top ? 0 : Math.sign(a.top - b.top);
+});
+
+const tumbleLevels = [];
+
+class TimeBasedAnimation {
+  constructor(startValue, endValue, durationSeconds) {
+    this.startValue = startValue;
+    this.endValue = endValue;
+    this.startTime = p.millis();
+    this.endTime = Math.round(this.startTime + durationSeconds * 1000);
+  }
+
+  isFinished() {
+    return p.millis() >= this.endTime;
+  }
+
+  value() {
+    const t = p.millis();
+    if (t > this.endTime) {
+      return this.endValue;
+    }
+    return p.lerp(this.startValue, this.endValue,
+        (t - this.startTime) / (this.endTime - this.startTime));
+  }
+}
 
 class TumbleAnimation {
   constructor(sign, startHeight) {
@@ -39,7 +76,7 @@ class TumbleAnimation {
   }
 }
 
-class Todd {
+class Dude {
   constructor(sideLength, fillColor) {
     this.sideLength = sideLength;
     this.fillColor = fillColor;
@@ -94,7 +131,8 @@ class Todd {
   }
 
   getJumpImpulse(speed) {
-    return Constants.jumpImpulse * [1.0, 1.0, 1.2][this.speedStepFunction(speed)];
+    return Constants.jumpImpulse * [1.0, 1.0, 1.2][this.speedStepFunction(
+        speed)];
   }
 
   getGravity() {
@@ -139,8 +177,10 @@ class Todd {
     p.rect(0, -(half + ysquish / 2.0), s - xsquish, s + ysquish, 3, 3);
 
     const eyeVCenter = -s + 8 - this.vSquish;
-    const eyeOffset = p.lerp(0, half - 6, Math.abs(this.bearing / Constants.maxvel));
-    const pupilOffset = p.lerp(0, half - 3, Math.abs(this.bearing / Constants.maxvel));
+    const eyeOffset = p.lerp(0, half - 6,
+        Math.abs(this.bearing / Constants.maxvel));
+    const pupilOffset = p.lerp(0, half - 3,
+        Math.abs(this.bearing / Constants.maxvel));
     let eyePos = {x: eyeOffset * Math.sign(this.bearing), y: eyeVCenter};
     let pupilPos = {x: pupilOffset * Math.sign(this.bearing), y: eyeVCenter};
     if (this.eyeCentering !== 0) {
@@ -339,5 +379,112 @@ class Todd {
 
   isInContactWithGround() {
     return this.getContactHeight() !== -1;
+  }
+}
+
+let dude;
+let previousFrameMillis;
+
+// noinspection JSUnusedLocalSymbols
+export function setup() {
+  p.createCanvas(600, 300);
+  dude = new Dude(Constants.side, p.color(255, 119, 0));
+  dude.setPos(width / 2, height);
+  previousFrameMillis = p.millis();
+
+  for (const plat of platforms) {
+    if (tumbleLevels.length > 0 &&
+        tumbleLevels[tumbleLevels.length - 1] === plat.top) {
+      continue;
+    }
+    tumbleLevels.push(plat.top);
+  }
+  tumbleLevels.push(height);
+}
+
+export function setControllerState(isDown) {
+  if (p.key === ' ') {
+    controller.jump = isDown;
+  } else if (p.keyCode === p.LEFT_ARROW) {
+    controller.left = isDown;
+  } else if (p.keyCode === p.RIGHT_ARROW) {
+    controller.right = isDown;
+  }
+}
+
+// noinspection JSUnusedLocalSymbols
+export function keyPressed() {
+  setControllerState(true);
+  if (p.key === ' ' && dude.isInContactWithGround()) {
+    shouldJump = true;
+  }
+}
+
+// noinspection JSUnusedLocalSymbols
+export function keyReleased() {
+  setControllerState(false);
+  if (p.key === ' ' && dude.isInContactWithGround()) {
+    jumpState.setState(jumpStateIdle);
+  }
+}
+
+let instructionFadeStart = -1;
+let instructionsShowing = true;
+
+// noinspection JSUnusedLocalSymbols
+export function draw() {
+  p.background(Constants.bg);
+
+  for (const platform of platforms) {
+    platform.draw();
+  }
+
+  if (p.random() < Constants.blinkOdds) {
+    dude.blink();
+  }
+
+  const t = p.millis();
+  const dt = (t - previousFrameMillis) / 1000.0;
+  previousFrameMillis = t;
+
+  const whichAccel = dude.isInContactWithGround() ? Constants.accel
+      : Constants.airBending;
+
+  if (controller.left) {
+    dude.adjustBearing(-Constants.bearingAccel * dt);
+    dude.xAccel(-whichAccel * dt);
+  } else if (controller.right) {
+    dude.adjustBearing(Constants.bearingAccel * dt);
+    dude.xAccel(whichAccel * dt);
+  } else {
+    dude.applyBearingFriction();
+    if (dude.isInContactWithGround()) {
+      dude.applyFriction();
+    }
+  }
+
+  dude.move(dt);
+  dude.draw();
+
+  if (instructionsShowing) {
+    if (instructionFadeStart === -1 &&
+        (controller.left || controller.right ||
+            jumpState.getState() === jumpStateJumping)) {
+      instructionFadeStart = t;
+    }
+
+    let textColor = 200;
+    if (instructionFadeStart !== -1) {
+      const elapsed = p.millis() - instructionFadeStart;
+      if (elapsed > 1000) {
+        textColor = 200 * (1 - (elapsed - 1000) / 1000.0);
+      }
+      if (elapsed >= 2000) {
+        instructionsShowing = false;
+      }
+    }
+    p.fill(textColor);
+    p.text("left/right arrows to move", 10, 20);
+    p.text("spacebar to jump", 10, 36);
   }
 }

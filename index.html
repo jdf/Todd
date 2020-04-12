@@ -41,7 +41,15 @@
 
 <body>
     <div id="main">
-        <script src="Todd.js"></script>
+        <script type="module" src="constants.js"></script>
+        <script type="module" src="Todd.js"></script>
+        <script type="module">
+            import * as Sketch from './Todd.js';
+            window.setup = Sketch.setup;
+            window.draw = Sketch.draw;
+            window.keyPressed = Sketch.keyPressed;
+            window.keyReleased = Sketch.keyReleased;
+        </script>
         <div id="foot">
             made with <a href="http://p5js.org">p5.js</a><br>
                 <a href="https://github.com/jdf/jump">source code on github</a>
