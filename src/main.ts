@@ -31,7 +31,12 @@ window.addEventListener('keyup', (e) => {
   World.setControllerState(e.code, false);
 });
 
-function draw(): void {
+function draw(t: DOMHighResTimeStamp): void {
+  // Clamp dt so that a long rAF gap (hidden/occluded tab) integrates as one
+  // short step; a multi-second dt makes the squish spring diverge.
+  const dt = Math.min((t - previousFrameMillis) / 1000.0, 0.05);
+  previousFrameMillis = t;
+
   ctx.fillStyle = Constants.bg;
   ctx.fillRect(0, 0, width, height);
 
@@ -42,12 +47,6 @@ function draw(): void {
   if (Math.random() < Constants.blinkOdds) {
     todd.blink();
   }
-
-  const t = millis();
-  // Clamp dt so that a long rAF gap (hidden/occluded tab) integrates as one
-  // short step; a multi-second dt makes the squish spring diverge.
-  const dt = Math.min((t - previousFrameMillis) / 1000.0, 0.05);
-  previousFrameMillis = t;
 
   const whichAccel = todd.isInContactWithGround() ? Constants.accel
       : Constants.airBending;
@@ -71,7 +70,7 @@ function draw(): void {
   if (instructionsShowing) {
     let textColor = 200;
     if (instructionFadeStart !== -1) {
-      const elapsed = millis() - instructionFadeStart;
+      const elapsed = t - instructionFadeStart;
       if (elapsed > 1000) {
         textColor = Math.max(0, 200 * (1 - (elapsed - 1000) / 1000.0));
       }
