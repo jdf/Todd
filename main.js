@@ -44,7 +44,9 @@ function draw() {
   }
 
   const t = millis();
-  const dt = (t - previousFrameMillis) / 1000.0;
+  // Clamp dt so that a long rAF gap (hidden/occluded tab) integrates as one
+  // short step; a multi-second dt makes the squish spring diverge.
+  const dt = Math.min((t - previousFrameMillis) / 1000.0, 0.05);
   previousFrameMillis = t;
 
   const whichAccel = todd.isInContactWithGround() ? Constants.accel
