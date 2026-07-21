@@ -1,11 +1,16 @@
 import {ctx, width, height, millis} from './runtime.ts';
 import * as Constants from './constants.ts';
-import * as World from './global_state.ts';
+import Platform from './platform.ts';
+import {World} from './world.ts';
 import Todd from './Todd.ts';
 
-const todd = new Todd(Constants.side, 'rgb(255, 119, 0)');
+const world = new World(width, height, [
+  new Platform(100, 110, 250, 130, 'rgb(190, 190, 255)'),
+  new Platform(300, 210, 500, 230, 'rgb(190, 255, 190)'),
+]);
+
+const todd = new Todd(world, Constants.side, 'rgb(255, 119, 0)');
 todd.setPos(width / 2, height);
-World.setup(height);
 
 let previousFrameMillis = millis();
 
@@ -21,14 +26,14 @@ window.addEventListener('keydown', (e) => {
   if (e.repeat) {
     return;
   }
-  World.setControllerState(e.code, true);
+  world.setControllerState(e.code, true);
   if (instructionsShowing && instructionFadeStart === -1) {
     instructionFadeStart = millis();
   }
 });
 
 window.addEventListener('keyup', (e) => {
-  World.setControllerState(e.code, false);
+  world.setControllerState(e.code, false);
 });
 
 function draw(t: DOMHighResTimeStamp): void {
@@ -40,8 +45,8 @@ function draw(t: DOMHighResTimeStamp): void {
   ctx.fillStyle = Constants.bg;
   ctx.fillRect(0, 0, width, height);
 
-  for (const platform of World.platforms) {
-    platform.draw();
+  for (const platform of world.platforms) {
+    platform.draw(ctx);
   }
 
   if (Math.random() < Constants.blinkOdds) {
@@ -51,10 +56,10 @@ function draw(t: DOMHighResTimeStamp): void {
   const whichAccel = todd.isInContactWithGround() ? Constants.accel
       : Constants.airBending;
 
-  if (World.controller.left) {
+  if (world.controller.left) {
     todd.adjustBearing(-Constants.bearingAccel * dt);
     todd.xAccel(-whichAccel * dt);
-  } else if (World.controller.right) {
+  } else if (world.controller.right) {
     todd.adjustBearing(Constants.bearingAccel * dt);
     todd.xAccel(whichAccel * dt);
   } else {
@@ -65,7 +70,7 @@ function draw(t: DOMHighResTimeStamp): void {
   }
 
   todd.move(dt);
-  todd.draw();
+  todd.draw(ctx);
 
   if (instructionsShowing) {
     let textColor = 200;

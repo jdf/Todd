@@ -1,5 +1,3 @@
-import {ctx} from './runtime.ts';
-
 export default class Platform {
   constructor(
       readonly left: number,
@@ -9,7 +7,7 @@ export default class Platform {
       readonly fillColor: string) {
   }
 
-  draw(): void {
+  draw(ctx: CanvasRenderingContext2D): void {
     ctx.fillStyle = this.fillColor;
     ctx.beginPath();
     ctx.roundRect(this.left, this.top,

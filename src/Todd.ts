@@ -1,6 +1,5 @@
-import {ctx, width, height} from './runtime.ts';
 import * as Constants from './constants.ts';
-import * as World from './global_state.ts';
+import {type World} from './world.ts';
 import {
   clamp,
   lerp,
@@ -9,16 +8,25 @@ import {
   type Vec
 } from './util.ts';
 
+export enum JumpState {
+  idle = 'idle',
+  jumping = 'jumping',
+  landed = 'landed',
+}
+
 class TumbleAnimation {
   startAngle = 0;
   targetHeight: number;
 
-  constructor(readonly sign: number, private startHeight: number) {
+  constructor(
+      readonly sign: number,
+      private startHeight: number,
+      private readonly tumbleLevels: readonly number[]) {
     this.targetHeight = this.nextTumbleHeight(startHeight);
   }
 
   nextTumbleHeight(height: number): number {
-    for (const h of World.tumbleLevels) {
+    for (const h of this.tumbleLevels) {
       if (h > height) {
         return h;
       }
@@ -61,6 +69,8 @@ export default class Todd {
 
   blinkCumulativeTime = -1;
 
+  jumpState = JumpState.idle;
+
   // A quantity >= 0 when jumpState is jumping.
   // Used in calculating gravity during jump.
   initialJumpSpeed = -1;
@@ -72,7 +82,10 @@ export default class Todd {
   eyeCentering = 0;
   eyeCenteringAnimation: TimeBasedAnimation | null = null;
 
-  constructor(readonly sideLength: number, readonly fillColor: string) {
+  constructor(
+      readonly world: World,
+      readonly sideLength: number,
+      readonly fillColor: string) {
   }
 
   // Maps an x-velocity to an integer in [0,2].
@@ -101,7 +114,7 @@ export default class Todd {
   getGravity(): number {
     if (this.vel.y < 0) {
       // going up!
-      return Constants.gravity * (World.controller.jump ? 0.55 : 1.0);
+      return Constants.gravity * (this.world.controller.jump ? 0.55 : 1.0);
     }
     return Constants.gravity;
   }
@@ -117,7 +130,7 @@ export default class Todd {
     this.blinkCumulativeTime = 0;
   }
 
-  drawAt(x: number, y: number): void {
+  drawAt(ctx: CanvasRenderingContext2D, x: number, y: number): void {
     ctx.save();
     ctx.translate(x, y);
 
@@ -174,14 +187,15 @@ export default class Todd {
     ctx.restore();
   }
 
-  draw(): void {
+  draw(ctx: CanvasRenderingContext2D): void {
     const {x, y} = this.pos;
-    this.drawAt(x, y);
+    this.drawAt(ctx, x, y);
     const half = this.sideLength / 2;
+    const {width} = this.world;
     if (x < half) {
-      this.drawAt(width + x, y);
+      this.drawAt(ctx, width + x, y);
     } else if (x > width - half) {
-      this.drawAt(x - width, y);
+      this.drawAt(ctx, x - width, y);
     }
   }
 
@@ -196,7 +210,7 @@ export default class Todd {
 
   yAccel(a: number): void {
     this.vel.y = this.vel.y + a;
-    const term = World.controller.jump ? Constants.jumpTerminalVelocity
+    const term = this.world.controller.jump ? Constants.jumpTerminalVelocity
         : Constants.terminalVelocity;
     if (this.vel.y > term) {
       this.vel.y = term;
@@ -204,7 +218,7 @@ export default class Todd {
   }
 
   jump(): void {
-    World.setJumpState(World.JumpState.jumping);
+    this.jumpState = JumpState.jumping;
     this.initialJumpSpeed = Math.abs(this.vel.x);
     this.vel.y = this.getJumpImpulse(this.initialJumpSpeed);
     this.vSquishVel = Constants.maxSquishVel;
@@ -228,6 +242,7 @@ export default class Todd {
 
   // Y value of surface top or -1 for not landing.
   getContactHeight(): number {
+    const {height, platforms} = this.world;
     if (this.pos.y >= height) {
       return height;
     }
@@ -236,7 +251,7 @@ export default class Todd {
       return -1;
     }
     const margin = this.platformMargin(this.vel.x);
-    for (const plat of World.platforms) {
+    for (const plat of platforms) {
       if (this.pos.y >= plat.top &&
           this.pos.y <= plat.bottom &&
           this.right() >= plat.left + margin &&
@@ -248,12 +263,15 @@ export default class Todd {
   }
 
   move(dt: number): void {
+    const {controller} = this.world;
+    const {width, height} = this.world;
+
     this.yAccel(this.getGravity() * dt);
     if (this.isInContactWithGround()) {
-      if (World.controller.jump && World.isJumpIdle()) {
+      if (controller.jump && this.jumpState === JumpState.idle) {
         this.jump();
-      } else if (!World.controller.jump && World.isJumpLanded()) {
-        World.setJumpState(World.JumpState.idle);
+      } else if (!controller.jump && this.jumpState === JumpState.landed) {
+        this.jumpState = JumpState.idle;
       }
     }
 
@@ -280,7 +298,7 @@ export default class Todd {
       this.pos.y = height;
     } else {
       const margin = this.platformMargin(this.vel.x);
-      for (const plat of World.platforms) {
+      for (const plat of this.world.platforms) {
         if (currentY <= plat.top && this.pos.y >= plat.top &&
             this.right() >= plat.left + margin &&
             this.left() <= plat.right - margin) {
@@ -295,7 +313,7 @@ export default class Todd {
       this.vel.y = 0;
       this.tumbleAnimation = null;
     }
-    if (World.isJumpJumping()) {
+    if (this.jumpState === JumpState.jumping) {
       if (colliding) {
         this.eyeCenteringAnimation = new TimeBasedAnimation(this.eyeCentering,
             0, Constants.eyeCenteringDurationSeconds);
@@ -304,23 +322,23 @@ export default class Todd {
           this.blink();
         }
         this.vSquishVel = -oldvel / 5.0;
-        World.setJumpState(
-            World.controller.jump ? World.JumpState.landed
-                : World.JumpState.idle);
+        this.jumpState =
+            controller.jump ? JumpState.landed : JumpState.idle;
       }
     } else if (!colliding) {
-      World.setJumpState(World.JumpState.jumping);  // we fell off a platform
+      this.jumpState = JumpState.jumping;  // we fell off a platform
       // Squish, but, if already squishing, squish in that direction.
       if (Constants.maxSquishVel > Math.abs(this.vSquishVel)) {
         this.vSquishVel = Constants.maxSquishVel * Math.sign(this.vSquishVel);
       }
       let sign = Math.sign(this.vel.x);
-      if (World.controller.left) {
+      if (controller.left) {
         sign = -1;
-      } else if (World.controller.right) {
+      } else if (controller.right) {
         sign = 1;
       }
-      this.tumbleAnimation = new TumbleAnimation(sign, this.pos.y);
+      this.tumbleAnimation =
+          new TumbleAnimation(sign, this.pos.y, this.world.tumbleLevels);
       this.eyeCenteringAnimation = new TimeBasedAnimation(this.eyeCentering,
           1, Constants.eyeCenteringDurationSeconds);
     }
