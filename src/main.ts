@@ -1,7 +1,7 @@
-import {ctx, width, height, millis} from './runtime.js';
-import * as Constants from './constants.js';
-import * as World from './global_state.js';
-import Todd from './Todd.js';
+import {ctx, width, height, millis} from './runtime.ts';
+import * as Constants from './constants.ts';
+import * as World from './global_state.ts';
+import Todd from './Todd.ts';
 
 const todd = new Todd(Constants.side, 'rgb(255, 119, 0)');
 todd.setPos(width / 2, height);

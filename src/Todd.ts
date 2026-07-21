@@ -1,13 +1,13 @@
-import {ctx, width, height} from './runtime.js';
-import * as Constants from './constants.js';
-import * as World from './global_state.js';
+import {ctx, width, height} from './runtime.ts';
+import * as Constants from './constants.ts';
+import * as World from './global_state.ts';
 import {
   clamp,
   lerp,
   lerpVec,
   TimeBasedAnimation,
   type Vec
-} from './util.js';
+} from './util.ts';
 
 class TumbleAnimation {
   startAngle = 0;

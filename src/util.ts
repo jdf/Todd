@@ -1,4 +1,4 @@
-import {millis} from './runtime.js';
+import {millis} from './runtime.ts';
 
 export interface Vec {
   x: number;

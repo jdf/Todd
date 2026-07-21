@@ -1,5 +1,5 @@
-import * as Constants from './constants.js';
-import Platform from './platform.js';
+import * as Constants from './constants.ts';
+import Platform from './platform.ts';
 
 // Current state of controller "buttons".
 export const controller = {

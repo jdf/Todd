@@ -1,4 +1,4 @@
-import {ctx} from './runtime.js';
+import {ctx} from './runtime.ts';
 
 export default class Platform {
   constructor(
