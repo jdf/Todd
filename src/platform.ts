@@ -1,15 +1,15 @@
 import {ctx} from './runtime.js';
 
 export default class Platform {
-  constructor(left, top, right, bottom, fillColor) {
-    this.left = left;
-    this.top = top;
-    this.right = right;
-    this.bottom = bottom;
-    this.fillColor = fillColor;
+  constructor(
+      readonly left: number,
+      readonly top: number,
+      readonly right: number,
+      readonly bottom: number,
+      readonly fillColor: string) {
   }
 
-  draw() {
+  draw(): void {
     ctx.fillStyle = this.fillColor;
     ctx.beginPath();
     ctx.roundRect(this.left, this.top,

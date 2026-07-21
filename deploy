@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Build the release dist, stage it into the site repo
+# (~/mrfeinberg.com/Todd/), commit that repo, and rsync the Todd/
+# subtree to the web host.
+#
+#   ./deploy           build, stage, commit the site repo, upload
+#   ./deploy -n        build, stage (no commit), rsync dry run
+#
+# The site repo is the deployed artifact: all of mrfeinberg.com is
+# versioned there, Todd/ included, so every deploy is a commit with
+# history and rollback. The remote sync uses the mrfeinberg-claude ssh
+# alias (a dedicated key; see ~/.ssh/config) and --delete scoped to
+# Todd/ only — that subtree is fully generated from this repo, so
+# deletions in it are always safe.
+set -euo pipefail
+cd "$(dirname "$0")"
+
+SITE="${TODD_SITE_DIR:-$HOME/mrfeinberg.com}"
+REMOTE="${TODD_REMOTE:-mrfeinberg-claude:mrfeinberg.com/Todd/}"
+
+DRY=""
+if [ "${1:-}" = "-n" ]; then
+  DRY="-n"
+  shift
+fi
+
+npm run build
+
+DIST="$PWD/dist"
+for f in index.html todd-fav.png; do
+  if [ ! -f "$DIST/$f" ]; then
+    echo "deploy: $DIST/$f missing after build" >&2
+    exit 1
+  fi
+done
+if ! ls "$DIST"/assets/*.js >/dev/null 2>&1; then
+  echo "deploy: no JS bundle in $DIST/assets after build" >&2
+  exit 1
+fi
+if [ ! -d "$SITE/.jj" ]; then
+  echo "deploy: $SITE is not the site repo" >&2
+  exit 1
+fi
+
+# Stage: the site repo's Todd/ mirrors dist exactly.
+rsync -a --delete --exclude .DS_Store "$DIST/" "$SITE/Todd/"
+
+BUILD_ID=$(git rev-parse --short HEAD)
+if [ -n "$(git status --porcelain)" ]; then
+  BUILD_ID="$BUILD_ID-dirty"
+fi
+if [ -z "$DRY" ]; then
+  # Commit the site repo, scoped to Todd/ (a re-deploy of an unchanged
+  # build stages nothing and commits nothing). Run from inside the
+  # repo: jj filesets resolve against the cwd.
+  if [ -n "$(cd "$SITE" && jj diff --summary Todd)" ]; then
+    (cd "$SITE" && jj commit Todd -m "Todd build $BUILD_ID")
+  else
+    echo "deploy: site repo already at Todd build $BUILD_ID"
+  fi
+fi
+
+exec rsync -rlptDv --delete --exclude .DS_Store $DRY "$@" \
+  "$SITE/Todd/" "$REMOTE"

@@ -1,6 +1,11 @@
 import {millis} from './runtime.js';
 
-export function clamp(v, min, max) {
+export interface Vec {
+  x: number;
+  y: number;
+}
+
+export function clamp(v: number, min: number, max: number): number {
   if (v < min) {
     return min;
   }
@@ -15,7 +20,7 @@ export function clamp(v, min, max) {
  * @param b value at t=1
  * @param t [0, 1] parameter
  */
-export function lerp(a, b, t) {
+export function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
@@ -24,23 +29,28 @@ export function lerp(a, b, t) {
  * @param w value at t=1
  * @param t [0, 1] parameter
  */
-export function lerpVec(v, w, t) {
+export function lerpVec(v: Vec, w: Vec, t: number): Vec {
   return {x: lerp(v.x, w.x, t), y: lerp(v.y, w.y, t)};
 }
 
 export class TimeBasedAnimation {
-  constructor(startValue, endValue, durationSeconds) {
+  readonly startValue: number;
+  readonly endValue: number;
+  readonly startMillis: number;
+  readonly endMillis: number;
+
+  constructor(startValue: number, endValue: number, durationSeconds: number) {
     this.startValue = startValue;
     this.endValue = endValue;
     this.startMillis = millis();
     this.endMillis = Math.round(this.startMillis + durationSeconds * 1000);
   }
 
-  isDone() {
+  isDone(): boolean {
     return millis() >= this.endMillis;
   }
 
-  value() {
+  value(): number {
     if (this.isDone()) {
       return this.endValue;
     }

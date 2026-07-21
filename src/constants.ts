@@ -4,13 +4,13 @@ export const bg = '#000';
 // length of dude's side
 export const side = 30;
 
-// A unitless export constant that we apply to velocity while on the ground.
+// A unitless constant that we apply to velocity while on the ground.
 export const friction = 0.83;
 
-// A unitless export constant that we apply to bearing when not accelerating.
+// A unitless constant that we apply to bearing when not accelerating.
 export const bearingFriction = 0.8;
 
-// The following export constants are pixels per second.
+// The following constants are pixels per second.
 export const gravity = 1400.0;
 export const maxvel = 240.0;
 export const accel = 900.0;
@@ -36,4 +36,4 @@ export const controllerKeys = {
   jump: 'Space',
   left: 'ArrowLeft',
   right: 'ArrowRight',
-};
+} as const;

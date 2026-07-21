@@ -5,18 +5,19 @@ import {
   clamp,
   lerp,
   lerpVec,
-  TimeBasedAnimation
+  TimeBasedAnimation,
+  type Vec
 } from './util.js';
 
 class TumbleAnimation {
-  constructor(sign, startHeight) {
-    this.sign = sign;
-    this.startHeight = startHeight;
-    this.startAngle = 0;
+  startAngle = 0;
+  targetHeight: number;
+
+  constructor(readonly sign: number, private startHeight: number) {
     this.targetHeight = this.nextTumbleHeight(startHeight);
   }
 
-  nextTumbleHeight(height) {
+  nextTumbleHeight(height: number): number {
     for (const h of World.tumbleLevels) {
       if (h > height) {
         return h;
@@ -25,7 +26,7 @@ class TumbleAnimation {
     throw new Error(`nowhere to tumble to from ${height}`);
   }
 
-  angleFor(height) {
+  angleFor(height: number): number {
     if (height <= this.startHeight) {
       return this.startAngle;
     }
@@ -45,43 +46,37 @@ class TumbleAnimation {
 }
 
 export default class Todd {
-  constructor(sideLength, fillColor) {
-    this.sideLength = sideLength;
-    this.fillColor = fillColor;
-    // Position of dude's bottom center.
-    this.pos = {
-      x: 0,
-      y: 0
-    };
-    this.vel = {
-      x: 0,
-      y: 0
-    };
-    // The direction the eye is facing.
-    this.bearing = 0;
+  // Position of dude's bottom center.
+  pos: Vec = {x: 0, y: 0};
+  vel: Vec = {x: 0, y: 0};
 
-    // Defect in vertical size, pixels.
-    // Horizontal gets inverse.
-    this.vSquish = 0;
-    // per second
-    this.vSquishVel = 0;
+  // The direction the eye is facing.
+  bearing = 0;
 
-    this.blinkCumulativeTime = -1;
+  // Defect in vertical size, pixels.
+  // Horizontal gets inverse.
+  vSquish = 0;
+  // per second
+  vSquishVel = 0;
 
-    // A quantity >= 0 when jumpState is jumpStateJumping.
-    // Used in calculating gravity during jump.
-    this.initialJumpSpeed = -1;
+  blinkCumulativeTime = -1;
 
-    // Tumbling!
-    this.tumbleAnimation = null;
-    // During tumbling, this animates to 1, which means completely centered.
-    // When tumbling ends, this animates to 0, which means "where it wants to be".
-    this.eyeCentering = 0;
-    this.eyeCenteringAnimation = null;
+  // A quantity >= 0 when jumpState is jumping.
+  // Used in calculating gravity during jump.
+  initialJumpSpeed = -1;
+
+  // Tumbling!
+  tumbleAnimation: TumbleAnimation | null = null;
+  // During tumbling, this animates to 1, which means completely centered.
+  // When tumbling ends, this animates to 0, which means "where it wants to be".
+  eyeCentering = 0;
+  eyeCenteringAnimation: TimeBasedAnimation | null = null;
+
+  constructor(readonly sideLength: number, readonly fillColor: string) {
   }
 
   // Maps an x-velocity to an integer in [0,2].
-  speedStepFunction(xVel) {
+  speedStepFunction(xVel: number): number {
     xVel = Math.abs(xVel);
     if (xVel < Constants.maxvel * .333) {
       return 0;
@@ -94,16 +89,16 @@ export default class Todd {
 
   // The platform has a width differing from its apparent width, depending on
   // your speed. The slower you are, the narrower the platform is.
-  platformMargin(xVel) {
+  platformMargin(xVel: number): number {
     return [8, 0, -5][this.speedStepFunction(xVel)];
   }
 
-  getJumpImpulse(speed) {
+  getJumpImpulse(speed: number): number {
     return Constants.jumpImpulse * [1.0, 1.0, 1.2][this.speedStepFunction(
         speed)];
   }
 
-  getGravity() {
+  getGravity(): number {
     if (this.vel.y < 0) {
       // going up!
       return Constants.gravity * (World.controller.jump ? 0.55 : 1.0);
@@ -111,32 +106,30 @@ export default class Todd {
     return Constants.gravity;
   }
 
-  setPos(x, y) {
-    this.pos = {
-      x,
-      y
-    };
+  setPos(x: number, y: number): void {
+    this.pos = {x, y};
   }
 
-  blink() {
+  blink(): void {
     if (this.blinkCumulativeTime !== -1) {
       return;
     }
     this.blinkCumulativeTime = 0;
   }
 
-  drawAt(x, y) {
+  drawAt(x: number, y: number): void {
     ctx.save();
     ctx.translate(x, y);
+
+    const s = this.sideLength;
+    const half = s / 2;
+
     if (this.tumbleAnimation != null) {
-      const half = this.sideLength / 2;
       ctx.translate(0, -half);
       ctx.rotate(this.tumbleAnimation.angleFor(this.pos.y));
       ctx.translate(0, half);
     }
 
-    const s = this.sideLength;
-    const half = s / 2;
     const xsquish = this.vSquish * 0.8;
     const ysquish = this.vSquish * 1.6;
 
@@ -154,8 +147,9 @@ export default class Todd {
         Math.abs(this.bearing / Constants.maxvel));
     const pupilOffset = lerp(0, half - 3,
         Math.abs(this.bearing / Constants.maxvel));
-    let eyePos = {x: eyeOffset * Math.sign(this.bearing), y: eyeVCenter};
-    let pupilPos = {x: pupilOffset * Math.sign(this.bearing), y: eyeVCenter};
+    let eyePos: Vec = {x: eyeOffset * Math.sign(this.bearing), y: eyeVCenter};
+    let pupilPos: Vec =
+        {x: pupilOffset * Math.sign(this.bearing), y: eyeVCenter};
     if (this.eyeCentering !== 0) {
       const center = {x: 0, y: -half};
       eyePos = lerpVec(eyePos, center, this.eyeCentering);
@@ -180,11 +174,8 @@ export default class Todd {
     ctx.restore();
   }
 
-  draw() {
-    const {
-      x,
-      y
-    } = this.pos;
+  draw(): void {
+    const {x, y} = this.pos;
     this.drawAt(x, y);
     const half = this.sideLength / 2;
     if (x < half) {
@@ -194,16 +185,16 @@ export default class Todd {
     }
   }
 
-  xAccel(a) {
+  xAccel(a: number): void {
     this.vel.x = clamp(this.vel.x + a, -Constants.maxvel, Constants.maxvel);
   }
 
-  adjustBearing(a) {
+  adjustBearing(a: number): void {
     this.bearing =
         clamp(this.bearing + a, -Constants.maxvel, Constants.maxvel);
   }
 
-  yAccel(a) {
+  yAccel(a: number): void {
     this.vel.y = this.vel.y + a;
     const term = World.controller.jump ? Constants.jumpTerminalVelocity
         : Constants.terminalVelocity;
@@ -212,31 +203,31 @@ export default class Todd {
     }
   }
 
-  jump() {
+  jump(): void {
     World.setJumpState(World.JumpState.jumping);
     this.initialJumpSpeed = Math.abs(this.vel.x);
     this.vel.y = this.getJumpImpulse(this.initialJumpSpeed);
     this.vSquishVel = Constants.maxSquishVel;
   }
 
-  applyFriction() {
+  applyFriction(): void {
     this.vel.x *= Constants.friction;
   }
 
-  applyBearingFriction() {
+  applyBearingFriction(): void {
     this.bearing *= Constants.bearingFriction;
   }
 
-  left() {
+  left(): number {
     return this.pos.x - this.sideLength / 2;
   }
 
-  right() {
+  right(): number {
     return this.pos.x + this.sideLength / 2;
   }
 
   // Y value of surface top or -1 for not landing.
-  getContactHeight() {
+  getContactHeight(): number {
     if (this.pos.y >= height) {
       return height;
     }
@@ -256,7 +247,7 @@ export default class Todd {
     return -1;
   }
 
-  move(dt) {
+  move(dt: number): void {
     this.yAccel(this.getGravity() * dt);
     if (this.isInContactWithGround()) {
       if (World.controller.jump && World.isJumpIdle()) {
@@ -359,7 +350,7 @@ export default class Todd {
     }
   }
 
-  isInContactWithGround() {
+  isInContactWithGround(): boolean {
     return this.getContactHeight() !== -1;
   }
 }

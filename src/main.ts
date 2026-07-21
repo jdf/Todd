@@ -1,7 +1,7 @@
 import {ctx, width, height, millis} from './runtime.js';
 import * as Constants from './constants.js';
 import * as World from './global_state.js';
-import Todd from './Todd.js'
+import Todd from './Todd.js';
 
 const todd = new Todd(Constants.side, 'rgb(255, 119, 0)');
 todd.setPos(width / 2, height);
@@ -12,7 +12,7 @@ let previousFrameMillis = millis();
 let instructionFadeStart = -1;
 let instructionsShowing = true;
 
-const gameKeys = new Set(Object.values(Constants.controllerKeys));
+const gameKeys = new Set<string>(Object.values(Constants.controllerKeys));
 
 window.addEventListener('keydown', (e) => {
   if (gameKeys.has(e.code)) {
@@ -31,7 +31,7 @@ window.addEventListener('keyup', (e) => {
   World.setControllerState(e.code, false);
 });
 
-function draw() {
+function draw(): void {
   ctx.fillStyle = Constants.bg;
   ctx.fillRect(0, 0, width, height);
 
@@ -82,8 +82,8 @@ function draw() {
     const c = Math.round(textColor);
     ctx.fillStyle = `rgb(${c}, ${c}, ${c})`;
     ctx.font = '12px sans-serif';
-    ctx.fillText("left/right arrows to move", 10, 20);
-    ctx.fillText("spacebar to jump", 10, 36);
+    ctx.fillText('left/right arrows to move', 10, 20);
+    ctx.fillText('spacebar to jump', 10, 36);
   }
 
   requestAnimationFrame(draw);
