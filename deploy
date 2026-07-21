@@ -24,7 +24,8 @@ if [ "${1:-}" = "-n" ]; then
   shift
 fi
 
-npm run build
+# Build and run the headless smoke test against the built bundle.
+npm test
 
 DIST="$PWD/dist"
 for f in index.html todd-fav.png; do
