@@ -1,8 +1,9 @@
-import p from './runtime.js';
+import {ctx, width, height} from './runtime.js';
 import * as Constants from './constants.js';
 import * as World from './global_state.js';
 import {
   clamp,
+  lerp,
   lerpVec,
   TimeBasedAnimation
 } from './util.js';
@@ -125,28 +126,33 @@ export default class Todd {
   }
 
   drawAt(x, y) {
-    p.rectMode(p.CENTER);
-    p.fill(this.fillColor);
-    p.noStroke();
+    ctx.save();
+    ctx.translate(x, y);
+    if (this.tumbleAnimation != null) {
+      const half = this.sideLength / 2;
+      ctx.translate(0, -half);
+      ctx.rotate(this.tumbleAnimation.angleFor(this.pos.y));
+      ctx.translate(0, half);
+    }
 
     const s = this.sideLength;
     const half = s / 2;
     const xsquish = this.vSquish * 0.8;
     const ysquish = this.vSquish * 1.6;
 
-    p.push();
-    p.translate(x, y);
-    if (this.tumbleAnimation != null) {
-      p.translate(0, -half);
-      p.rotate(this.tumbleAnimation.angleFor(this.pos.y));
-      p.translate(0, half);
-    }
-    p.rect(0, -(half + ysquish / 2.0), s - xsquish, s + ysquish, 3, 3);
+    // Body: a rounded rect centered at (0, -(half + ysquish/2)).
+    const bodyW = s - xsquish;
+    const bodyH = s + ysquish;
+    const bodyCenterY = -(half + ysquish / 2.0);
+    ctx.fillStyle = this.fillColor;
+    ctx.beginPath();
+    ctx.roundRect(-bodyW / 2, bodyCenterY - bodyH / 2, bodyW, bodyH, 3);
+    ctx.fill();
 
     const eyeVCenter = -s + 8 - this.vSquish;
-    const eyeOffset = p.lerp(0, half - 6,
+    const eyeOffset = lerp(0, half - 6,
         Math.abs(this.bearing / Constants.maxvel));
-    const pupilOffset = p.lerp(0, half - 3,
+    const pupilOffset = lerp(0, half - 3,
         Math.abs(this.bearing / Constants.maxvel));
     let eyePos = {x: eyeOffset * Math.sign(this.bearing), y: eyeVCenter};
     let pupilPos = {x: pupilOffset * Math.sign(this.bearing), y: eyeVCenter};
@@ -155,20 +161,23 @@ export default class Todd {
       eyePos = lerpVec(eyePos, center, this.eyeCentering);
       pupilPos = lerpVec(pupilPos, center, this.eyeCentering);
     }
-    p.fill(255, 255, 255);
-    p.ellipse(eyePos.x, eyePos.y, 10, 10);
-    p.fill(0);
-    p.ellipse(pupilPos.x, pupilPos.y, 3, 3);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(eyePos.x, eyePos.y, 5, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(pupilPos.x, pupilPos.y, 1.5, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-    p.rectMode(p.CORNERS);
     if (this.blinkCumulativeTime !== -1) {
       const blinkCycle = this.blinkCumulativeTime / Constants.blinkCycleSeconds;
-      p.fill(this.fillColor);
       const lidTopY = eyePos.y - 6;
-      const lidBottomY = lidTopY + 12 * Math.sin(Math.PI * blinkCycle);
-      p.rect(-half + 3, lidTopY, half - 3, lidBottomY);
+      const lidHeight = 12 * Math.sin(Math.PI * blinkCycle);
+      ctx.fillStyle = this.fillColor;
+      ctx.fillRect(-half + 3, lidTopY, s - 6, lidHeight);
     }
-    p.pop();
+    ctx.restore();
   }
 
   draw() {

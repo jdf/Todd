@@ -1,4 +1,5 @@
-import p from './runtime.js'
+import {ctx} from './runtime.js';
+
 export default class Platform {
   constructor(left, top, right, bottom, fillColor) {
     this.left = left;
@@ -9,9 +10,10 @@ export default class Platform {
   }
 
   draw() {
-    p.rectMode(p.CORNERS);
-    p.fill(color(this.fillColor));
-    p.rect(this.left, this.top, this.right, this.bottom, 3, 3);
+    ctx.fillStyle = this.fillColor;
+    ctx.beginPath();
+    ctx.roundRect(this.left, this.top,
+        this.right - this.left, this.bottom - this.top, 3);
+    ctx.fill();
   }
 }
-

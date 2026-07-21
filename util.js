@@ -1,4 +1,4 @@
-import p from './runtime.js';
+import {millis} from './runtime.js';
 
 export function clamp(v, min, max) {
   if (v < min) {
@@ -15,7 +15,7 @@ export function clamp(v, min, max) {
  * @param b value at t=1
  * @param t [0, 1] parameter
  */
-function lerp(a, b, t) {
+export function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
@@ -32,12 +32,12 @@ export class TimeBasedAnimation {
   constructor(startValue, endValue, durationSeconds) {
     this.startValue = startValue;
     this.endValue = endValue;
-    this.startMillis = p.millis();
+    this.startMillis = millis();
     this.endMillis = Math.round(this.startMillis + durationSeconds * 1000);
   }
 
   isDone() {
-    return p.millis() >= this.endMillis;
+    return millis() >= this.endMillis;
   }
 
   value() {
@@ -45,7 +45,6 @@ export class TimeBasedAnimation {
       return this.endValue;
     }
     return lerp(this.startValue, this.endValue,
-        (p.millis() - this.startMillis) / (this.endMillis - this.startMillis));
+        (millis() - this.startMillis) / (this.endMillis - this.startMillis));
   }
 }
-

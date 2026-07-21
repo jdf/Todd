@@ -1,7 +1,5 @@
-import p from './runtime.js';
-
 // bg color
-export const bg = 0;
+export const bg = '#000';
 
 // length of dude's side
 export const side = 30;
@@ -33,8 +31,9 @@ export const blinkCycleSeconds = 0.25;
 // Eye centering speed for tumbling/landing.
 export const eyeCenteringDurationSeconds = 0.25;
 
-export const controllerKeyCodes = {
-  jump: 32, // space
-  left: p.LEFT_ARROW,
-  right: p.RIGHT_ARROW,
+// KeyboardEvent.code values.
+export const controllerKeys = {
+  jump: 'Space',
+  left: 'ArrowLeft',
+  right: 'ArrowRight',
 };

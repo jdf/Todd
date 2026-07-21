@@ -45,12 +45,12 @@ export function setup(worldHeight) {
   tumbleLevels.push(worldHeight);
 }
 
-export function setControllerState(keyCode, isDown) {
-  if (keyCode === Constants.controllerKeyCodes.jump) {
+export function setControllerState(code, isDown) {
+  if (code === Constants.controllerKeys.jump) {
     controller.jump = isDown;
-  } else if (keyCode === Constants.controllerKeyCodes.left) {
+  } else if (code === Constants.controllerKeys.left) {
     controller.left = isDown;
-  } else if (keyCode === Constants.controllerKeyCodes.right) {
+  } else if (code === Constants.controllerKeys.right) {
     controller.right = isDown;
   }
 }

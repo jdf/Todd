@@ -1,47 +1,49 @@
-import p from './runtime.js';
+import {ctx, width, height, millis} from './runtime.js';
 import * as Constants from './constants.js';
 import * as World from './global_state.js';
 import Todd from './Todd.js'
 
-let todd;
-let previousFrameMillis;
+const todd = new Todd(Constants.side, 'rgb(255, 119, 0)');
+todd.setPos(width / 2, height);
+World.setup(height);
 
-// noinspection JSUnusedLocalSymbols
-export function setup() {
-  p.createCanvas(600, 300);
-  todd = new Todd(Constants.side, p.color(255, 119, 0));
-  todd.setPos(width / 2, height);
-  previousFrameMillis = p.millis();
-  World.setup(height);
-}
+let previousFrameMillis = millis();
 
 let instructionFadeStart = -1;
 let instructionsShowing = true;
 
-export function keyPressed() {
-  World.setControllerState(p.keyCode, true);
-  if (instructionsShowing && instructionFadeStart === -1) {
-    instructionFadeStart = p.millis();
+const gameKeys = new Set(Object.values(Constants.controllerKeys));
+
+window.addEventListener('keydown', (e) => {
+  if (gameKeys.has(e.code)) {
+    e.preventDefault();
   }
-}
+  if (e.repeat) {
+    return;
+  }
+  World.setControllerState(e.code, true);
+  if (instructionsShowing && instructionFadeStart === -1) {
+    instructionFadeStart = millis();
+  }
+});
 
-export function keyReleased() {
-  World.setControllerState(p.keyCode, false);
-}
+window.addEventListener('keyup', (e) => {
+  World.setControllerState(e.code, false);
+});
 
-// noinspection JSUnusedLocalSymbols
-export function draw() {
-  p.background(Constants.bg);
+function draw() {
+  ctx.fillStyle = Constants.bg;
+  ctx.fillRect(0, 0, width, height);
 
   for (const platform of World.platforms) {
     platform.draw();
   }
 
-  if (p.random() < Constants.blinkOdds) {
+  if (Math.random() < Constants.blinkOdds) {
     todd.blink();
   }
 
-  const t = p.millis();
+  const t = millis();
   const dt = (t - previousFrameMillis) / 1000.0;
   previousFrameMillis = t;
 
@@ -67,16 +69,22 @@ export function draw() {
   if (instructionsShowing) {
     let textColor = 200;
     if (instructionFadeStart !== -1) {
-      const elapsed = p.millis() - instructionFadeStart;
+      const elapsed = millis() - instructionFadeStart;
       if (elapsed > 1000) {
-        textColor = 200 * (1 - (elapsed - 1000) / 1000.0);
+        textColor = Math.max(0, 200 * (1 - (elapsed - 1000) / 1000.0));
       }
       if (elapsed >= 2000) {
         instructionsShowing = false;
       }
     }
-    p.fill(textColor);
-    p.text("left/right arrows to move", 10, 20);
-    p.text("spacebar to jump", 10, 36);
+    const c = Math.round(textColor);
+    ctx.fillStyle = `rgb(${c}, ${c}, ${c})`;
+    ctx.font = '12px sans-serif';
+    ctx.fillText("left/right arrows to move", 10, 20);
+    ctx.fillText("spacebar to jump", 10, 36);
   }
+
+  requestAnimationFrame(draw);
 }
+
+requestAnimationFrame(draw);
