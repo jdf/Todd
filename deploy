@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the release dist, stage it into the site repo
-# (~/mrfeinberg.com/Todd/), commit that repo, and rsync the Todd/
+# (~/projects/mrfeinberg.com/Todd/), commit that repo, and rsync the Todd/
 # subtree to the web host.
 #
 #   ./deploy           build, stage, commit the site repo, upload
@@ -15,7 +15,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-SITE="${TODD_SITE_DIR:-$HOME/mrfeinberg.com}"
+SITE="${TODD_SITE_DIR:-$HOME/projects/mrfeinberg.com}"
 REMOTE="${TODD_REMOTE:-mrfeinberg-claude:mrfeinberg.com/Todd/}"
 
 DRY=""
