@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the release dist, stage it into the site repo
-# (~/projects/mrfeinberg.com/Todd/), commit that repo, and rsync the Todd/
+# (~/projects/mrfeinberg.com/Todd/), commit and push that repo, and rsync the Todd/
 # subtree to the web host.
 #
 #   ./deploy           build, stage, commit the site repo, upload
@@ -61,5 +61,13 @@ if [ -z "$DRY" ]; then
   fi
 fi
 
-exec rsync -rlptDv --delete --exclude .DS_Store $DRY "$@" \
+rsync -rlptDv --delete --exclude .DS_Store $DRY "$@" \
   "$SITE/Todd/" "$REMOTE"
+
+# Back the site repo up to GitHub. This runs after the upload so a
+# GitHub hiccup can't block a deploy, and it is not `exec`d away: a
+# failure here must still surface, because silently skipping the push
+# is exactly how the remote drifted nine builds behind the local repo.
+if [ -z "$DRY" ]; then
+  (cd "$SITE" && jj push-main)
+fi
