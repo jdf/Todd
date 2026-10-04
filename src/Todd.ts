@@ -188,15 +188,7 @@ export default class Todd {
   }
 
   draw(ctx: CanvasRenderingContext2D): void {
-    const {x, y} = this.pos;
-    this.drawAt(ctx, x, y);
-    const half = this.sideLength / 2;
-    const {width} = this.world;
-    if (x < half) {
-      this.drawAt(ctx, width + x, y);
-    } else if (x > width - half) {
-      this.drawAt(ctx, x - width, y);
-    }
+    this.drawAt(ctx, this.pos.x, this.pos.y);
   }
 
   xAccel(a: number): void {
@@ -242,9 +234,9 @@ export default class Todd {
 
   // Y value of surface top or -1 for not landing.
   getContactHeight(): number {
-    const {height, platforms} = this.world;
-    if (this.pos.y >= height) {
-      return height;
+    const {floorY, platforms} = this.world;
+    if (this.pos.y >= floorY) {
+      return floorY;
     }
     // can't land if we're moving up
     if (this.vel.y < 0) {
@@ -263,8 +255,7 @@ export default class Todd {
   }
 
   move(dt: number): void {
-    const {controller} = this.world;
-    const {width, height} = this.world;
+    const {controller, width, floorY, wallThickness} = this.world;
 
     this.yAccel(this.getGravity() * dt);
     if (this.isInContactWithGround()) {
@@ -282,20 +273,25 @@ export default class Todd {
       this.blinkCumulativeTime = -1;
     }
 
+    // Walls: stop dead against them.
     this.pos.x += this.vel.x * dt;
-    if (this.pos.x > width) {
-      this.pos.x = 0;
-    } else if (this.pos.x < 0) {
-      this.pos.x = width;
+    const minX = wallThickness + this.sideLength / 2;
+    const maxX = width - wallThickness - this.sideLength / 2;
+    if (this.pos.x < minX) {
+      this.pos.x = minX;
+      this.vel.x = Math.max(0, this.vel.x);
+    } else if (this.pos.x > maxX) {
+      this.pos.x = maxX;
+      this.vel.x = Math.min(0, this.vel.x);
     }
 
     // Collisions.
     const currentY = this.pos.y;
     this.pos.y = currentY + this.vel.y * dt;
     let colliding = false;
-    if (this.pos.y >= height) {
+    if (this.pos.y >= floorY) {
       colliding = true;
-      this.pos.y = height;
+      this.pos.y = floorY;
     } else {
       const margin = this.platformMargin(this.vel.x);
       for (const plat of this.world.platforms) {

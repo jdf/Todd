@@ -5,33 +5,40 @@
     <link rel="icon" href="/todd-fav.png">
     <title>Todd</title>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
     <style>
-        body {
+        html, body {
             margin: 0;
-            padding: 30px;
+            height: 100%;
+            overflow: hidden;
             background-color: #333333;
+        }
+
+        /* The canvas is sized by runtime.ts to the largest rectangle of
+           the view's aspect ratio that fits the window; flex centering
+           leaves the body's background showing as letterbox bars. */
+        #main {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            align-items: center;
+            justify-content: center;
         }
 
         canvas {
             display: block;
-            margin: auto;
         }
 
-        #main {
-            height: 100%;
-            align-content: center;
-        }
         #foot {
             font-family: 'Comic Neue', sans-serif;
-            font-size: 20px;
+            font-size: 14px;
             color: #c76812;
-            width: 400px;
-            left: calc(50% - 200px);
             position: absolute;
-            bottom: 8px;
-            text-align: center;
+            right: 10px;
+            bottom: 6px;
         }
+
         a {
             color: #d17212;
         }
@@ -41,11 +48,11 @@
 <body>
     <div id="main">
         <canvas id="todd" width="600" height="300"></canvas>
-        <script type="module" src="/src/main.ts"></script>
-        <div id="foot">
-            <a href="https://github.com/jdf/Todd">source code on github</a>
-        </div>
     </div>
+    <div id="foot">
+        <a href="https://github.com/jdf/Todd">source code on github</a>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
 </body>
 
 </html>

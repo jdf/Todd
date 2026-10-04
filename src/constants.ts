@@ -1,6 +1,18 @@
 // bg color
 export const bg = '#000';
 
+// The logical view, in world pixels. The canvas is scaled to fit the
+// window at this aspect ratio, letterboxed; every other number in this
+// file is tuned against these dimensions.
+export const viewWidth = 600;
+export const viewHeight = 300;
+
+// The camera's character box, in view pixels. Todd moves freely inside
+// it; when his bottom-center crosses an edge, the camera is pushed along
+// with him. The box is tall enough that a full running jump from the
+// bottom edge stays inside it, so jumping alone never moves the camera.
+export const cameraBox = {left: 230, top: 90, right: 370, bottom: 230};
+
 // length of dude's side
 export const side = 30;
 
@@ -37,3 +49,7 @@ export const controllerKeys = {
   left: 'ArrowLeft',
   right: 'ArrowRight',
 } as const;
+
+// Non-controller keys.
+export const fullscreenKey = 'KeyF';
+export const debugKey = 'KeyB';
