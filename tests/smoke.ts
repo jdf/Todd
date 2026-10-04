@@ -16,6 +16,7 @@
 import {readdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {maxLean} from '../src/constants.ts';
 
 // Fake clock: performance.now() advances only when a frame is run.
 const frameMillis = 1000 / 60;
@@ -117,7 +118,13 @@ expectCanvas(1800, 900, '900px', '450px');
 interface Debug {
   world: {width: number; floorY: number; height: number; wallThickness: number};
   camera: {x: number; y: number};
-  todd: {pos: {x: number; y: number}; sideLength: number; lean: number};
+  todd: {
+    pos: {x: number; y: number};
+    sideLength: number;
+    lean: number;
+    vSquish: number;
+    wallContact: number;
+  };
   pause(): void;
   step(n?: number): void;
   resume(): void;
@@ -154,6 +161,8 @@ const trajectory: number[][] = [];
 const contactHeights = new Set<number>();
 let cameraMoved = false;
 let frames = 0;
+let wallHitFrame = -1;
+let maxWallSquish = 0;
 
 function frame(): void {
   for (const key of script[frames] ?? []) {
@@ -179,6 +188,12 @@ function frame(): void {
         round(todd.lean)]);
   }
   contactHeights.add(todd.pos.y);
+  if (todd.wallContact === 1) {
+    if (wallHitFrame === -1) {
+      wallHitFrame = frames;
+    }
+    maxWallSquish = Math.max(maxWallSquish, todd.vSquish);
+  }
   if (camera.x > 20 && camera.x < 40) {
     cameraMoved = true;
   }
@@ -221,18 +236,22 @@ if (!cameraMoved || camera.x !== world.width - 20) {
   throw new Error(`camera at ${camera.x}, moved=${cameraMoved}`);
 }
 
-// Lean: running right at full speed leans right; three frames after
-// reversing to the left he already leans left; held against the wall he
-// stays leaned into it.
+// Lean: running right at full speed leans right; five frames after
+// reversing to the left he already leans left; held against the wall
+// he stands square. The wall hit at full speed squishes him tall.
 const leanAt = (f: number) => trajectory[f / 5 - 1][3];
-if (!(leanAt(95) > 0.9 * 0.2)) {
+if (!(leanAt(95) > 0.9 * maxLean)) {
   throw new Error(`lean at full speed is ${leanAt(95)}`);
 }
-if (!(leanAt(145) < -0.05)) {
+if (!(leanAt(145) < -0.2 * maxLean)) {
   throw new Error(`lean just after reversing is ${leanAt(145)}`);
 }
-if (!(leanAt(1200) > 0.9 * 0.2)) {
+if (!(Math.abs(leanAt(1200)) < 0.001)) {
   throw new Error(`lean against the wall is ${leanAt(1200)}`);
+}
+if (wallHitFrame === -1 || !(maxWallSquish > 0.05)) {
+  throw new Error(`wall hit at frame ${wallHitFrame}, max squish ${
+      maxWallSquish}`);
 }
 
 // Trajectory against the golden.

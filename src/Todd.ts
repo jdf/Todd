@@ -72,6 +72,9 @@ export default class Todd {
   // Horizontal offset of the top edge relative to the feet, units.
   lean = 0;
 
+  // -1 against the left wall, 1 against the right, 0 free.
+  wallContact = 0;
+
   jumpState = JumpState.idle;
 
   // A quantity >= 0 when jumpState is jumping.
@@ -155,6 +158,12 @@ export default class Todd {
     const xsquish = this.vSquish * 0.8;
     const ysquish = this.vSquish * 1.6;
 
+    // Against a wall, the body narrows away from the wall rather than
+    // about its center, so the wall-side edge stays put.
+    if (this.wallContact !== 0) {
+      ctx.translate(this.wallContact * xsquish / 2, 0);
+    }
+
     // Body: a rounded rect centered at (0, -(half + ysquish/2)).
     const bodyW = s - xsquish;
     const bodyH = s + ysquish;
@@ -164,10 +173,13 @@ export default class Todd {
     ctx.roundRect(-bodyW / 2, bodyCenterY - bodyH / 2, bodyW, bodyH, 0.1);
     ctx.fill();
 
+    // The eye swings toward the edge of the body as it is now, so a
+    // squished-narrow body keeps the eye inside it.
     const eyeVCenter = -s + 4 / 15 - this.vSquish;
-    const eyeOffset = lerp(0, half - 0.2,
+    const bodyHalf = bodyW / 2;
+    const eyeOffset = lerp(0, bodyHalf - 0.2,
         Math.abs(this.bearing / Constants.maxvel));
-    const pupilOffset = lerp(0, half - 0.1,
+    const pupilOffset = lerp(0, bodyHalf - 0.1,
         Math.abs(this.bearing / Constants.maxvel));
     let eyePos: Vec = {x: eyeOffset * Math.sign(this.bearing), y: eyeVCenter};
     let pupilPos: Vec =
@@ -190,8 +202,15 @@ export default class Todd {
       const blinkCycle = this.blinkCumulativeTime / Constants.blinkCycleSeconds;
       const lidTopY = eyePos.y - 0.2;
       const lidHeight = 0.4 * Math.sin(Math.PI * blinkCycle);
+      // The lid is body-colored, so it only needs to cover the eye: clip
+      // to the eye and it closes fully wherever the eye has swung to.
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(eyePos.x, eyePos.y, 1 / 6, 1 / 6, 0, 0, Math.PI * 2);
+      ctx.clip();
       ctx.fillStyle = this.fillColor;
-      ctx.fillRect(-half + 0.1, lidTopY, s - 0.2, lidHeight);
+      ctx.fillRect(eyePos.x - 0.25, lidTopY, 0.5, lidHeight);
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -293,12 +312,22 @@ export default class Todd {
     this.pos.x += this.vel.x * dt;
     const minX = wallThickness + this.sideLength / 2;
     const maxX = width - wallThickness - this.sideLength / 2;
-    if (this.pos.x < minX) {
+    const previousWallContact = this.wallContact;
+    this.wallContact = 0;
+    if (this.pos.x <= minX) {
       this.pos.x = minX;
-      this.vel.x = Math.max(0, this.vel.x);
-    } else if (this.pos.x > maxX) {
+      this.wallContact = -1;
+    } else if (this.pos.x >= maxX) {
       this.pos.x = maxX;
-      this.vel.x = Math.min(0, this.vel.x);
+      this.wallContact = 1;
+    }
+    if (this.wallContact !== 0 && this.vel.x * this.wallContact > 0) {
+      if (previousWallContact === 0) {
+        // Impact: absorb it as a tall-and-narrow squish.
+        this.vSquishVel = Math.max(this.vSquishVel,
+            Math.abs(this.vel.x) * Constants.wallImpactSquish);
+      }
+      this.vel.x = 0;
     }
 
     // Collisions.
@@ -387,7 +416,9 @@ export default class Todd {
     const dir = controller.left ? -1 : controller.right ? 1 : 0;
     let target = 0;
     let rate = Constants.leanSnapRate;
-    if (onGround && dir !== 0) {
+    if (this.wallContact !== 0 && dir === this.wallContact) {
+      // Pressed against a wall: nothing to lean into, stand square.
+    } else if (onGround && dir !== 0) {
       if (Math.sign(this.vel.x) === -dir) {
         // Pushing against his motion: lean into the effort at once.
         target = dir * Constants.maxLean;
