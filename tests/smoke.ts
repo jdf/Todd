@@ -125,8 +125,8 @@ if (camera.x !== 20 || camera.y !== world.height - 10) {
 
 // The script: frame -> keys to press (lowercase) or release (prefixed
 // with -). Starting at the center of the floor, with the green platform
-// (30..36.7, top 21) just to the right and the blue one (23.3..28.3,
-// top 17.7) up and to the left.
+// (30..37, top 21) just to the right and the blue one (23..28, top 18)
+// up and to the left.
 const script: Record<number, string[]> = {
   30: ['ArrowLeft'],               // back up a little
   60: ['-ArrowLeft', 'ArrowRight'],
@@ -199,7 +199,7 @@ if (ctxCalls < totalFrames) {
 }
 
 // The script must have landed on both nearby platforms.
-for (const top of [530 / 30, 630 / 30]) {
+for (const top of [18, 21]) {
   if (!contactHeights.has(top)) {
     throw new Error(`never stood on the platform at ${top}`);
   }
