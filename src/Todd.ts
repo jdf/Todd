@@ -216,12 +216,19 @@ export default class Todd {
     this.vSquishVel = Constants.maxSquishVel;
   }
 
-  applyFriction(): void {
-    this.vel.x *= Constants.friction;
+  applyFriction(dt: number): void {
+    this.vel.x *= Math.exp(-Constants.frictionRate * dt);
   }
 
-  applyBearingFriction(): void {
-    this.bearing *= Constants.bearingFriction;
+  applyBearingFriction(dt: number): void {
+    this.bearing *= Math.exp(-Constants.bearingFrictionRate * dt);
+  }
+
+  /** Rolls for a spontaneous blink over an interval of dt seconds. */
+  maybeBlink(dt: number): void {
+    if (Math.random() < 1 - Math.exp(-Constants.blinkRate * dt)) {
+      this.blink();
+    }
   }
 
   left(): number {

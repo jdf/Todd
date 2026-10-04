@@ -90,9 +90,7 @@ function draw(t: DOMHighResTimeStamp): void {
   const dt = Math.min((t - previousFrameMillis) / 1000.0, 0.05);
   previousFrameMillis = t;
 
-  if (Math.random() < Constants.blinkOdds) {
-    todd.blink();
-  }
+  todd.maybeBlink(dt);
 
   const whichAccel = todd.isInContactWithGround() ? Constants.accel
       : Constants.airBending;
@@ -104,9 +102,9 @@ function draw(t: DOMHighResTimeStamp): void {
     todd.adjustBearing(Constants.bearingAccel * dt);
     todd.xAccel(whichAccel * dt);
   } else {
-    todd.applyBearingFriction();
+    todd.applyBearingFriction(dt);
     if (todd.isInContactWithGround()) {
-      todd.applyFriction();
+      todd.applyFriction(dt);
     }
   }
 

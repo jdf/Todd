@@ -16,11 +16,17 @@ export const cameraBox = {left: 230, top: 90, right: 370, bottom: 230};
 // length of dude's side
 export const side = 30;
 
-// A unitless constant that we apply to velocity while on the ground.
-export const friction = 0.83;
-
-// A unitless constant that we apply to bearing when not accelerating.
-export const bearingFriction = 0.8;
+// Decay rates, in 1/s: each second the quantity is multiplied by
+// e^-rate, so the rate is independent of frame rate. Both were per-frame
+// multipliers (0.83 and 0.8 at 60Hz) and are written as the equivalent
+// rates so the feel is exactly preserved at 60Hz.
+//
+// Ground friction on velocity when not accelerating: 11.2/s, a
+// half-life of 62ms.
+export const frictionRate = -Math.log(0.83) * 60;
+// Bearing (eye direction) when not accelerating: 13.4/s, a half-life
+// of 52ms.
+export const bearingFrictionRate = -Math.log(0.8) * 60;
 
 // The following constants are pixels per second.
 export const gravity = 1400.0;
@@ -36,8 +42,9 @@ export const maxSquishVel = 80.0;
 export const jumpTerminalVelocity = 350.0;
 export const terminalVelocity = 550.0;
 
-// Blinking.
-export const blinkOdds = 1 / 300.0;
+// Blinking: a Poisson rate in blinks per second, so on average one
+// blink every five seconds (it was a 1/300 roll per frame at 60Hz).
+export const blinkRate = 0.2;
 export const blinkCycleSeconds = 0.25;
 
 // Eye centering speed for tumbling/landing.
