@@ -11,7 +11,7 @@ jump (hold for height), `f` for fullscreen.
 
 ```sh
 npm run dev    # vite dev server with hot reload
-npm test       # typecheck, build, headless 900-frame smoke test
+npm test       # typecheck, build, deterministic headless trajectory test
 ./deploy       # test-gated deploy to mrfeinberg.com/Todd/
 ```
 
@@ -25,6 +25,7 @@ lands flat, and an eye with its own bearing and friction.
 
 ## The view
 
-The game renders a fixed 600×300 logical view, scaled to fill the
-window with letterbox bars. A push-box camera follows Todd through a
-world three views wide and two and a half tall (`b` shows the box).
+The unit is Todd: his side is 1, the view is 20×10, and the game
+scales that view to fill the window with letterbox bars. A push-box
+camera follows Todd through a world three views wide and two and a
+half tall (`b` shows the box).

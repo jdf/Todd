@@ -9,7 +9,7 @@ export interface Controller {
 
 const terrainColor = 'rgb(105, 88, 72)';
 const grassColor = 'rgb(170, 225, 150)';
-const grassDepth = 4;
+const grassDepth = 2 / 15;
 
 export class World {
   readonly platforms: Platform[];
@@ -19,7 +19,7 @@ export class World {
   readonly controller: Controller = {left: false, right: false, jump: false};
 
   /**
-   * @param width world width in pixels, walls included
+   * @param width world width in units, walls included
    * @param floorY y of the ground surface Todd stands on
    * @param platforms in any order
    * @param groundDepth thickness of the drawn ground below floorY

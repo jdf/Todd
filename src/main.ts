@@ -1,4 +1,11 @@
-import {ctx, width, height, millis, toggleFullscreen} from './runtime.ts';
+import {
+  ctx,
+  width,
+  height,
+  millis,
+  enterPixelSpace,
+  toggleFullscreen,
+} from './runtime.ts';
 import * as Constants from './constants.ts';
 import {Camera} from './camera.ts';
 import {makeLevel} from './level.ts';
@@ -48,6 +55,12 @@ window.addEventListener('keyup', (e) => {
   world.setControllerState(e.code, false);
 });
 
+// HUD text is drawn in pixel space, sized relative to the view: 0.4
+// units tall, which is 12px at a 600px-wide view.
+function hudFont(u: number): string {
+  return `${(0.4 * u).toFixed(1)}px sans-serif`;
+}
+
 function drawInstructions(t: DOMHighResTimeStamp): void {
   let textColor = 200;
   if (instructionFadeStart !== -1) {
@@ -59,29 +72,35 @@ function drawInstructions(t: DOMHighResTimeStamp): void {
       instructionsShowing = false;
     }
   }
+  ctx.save();
+  const u = enterPixelSpace();
   const c = Math.round(textColor);
   ctx.fillStyle = `rgb(${c}, ${c}, ${c})`;
-  ctx.font = '12px sans-serif';
-  ctx.fillText('left/right arrows to move', 10, 20);
-  ctx.fillText('spacebar to jump', 10, 36);
-  ctx.fillText('f for fullscreen', 10, 52);
+  ctx.font = hudFont(u);
+  ctx.fillText('left/right arrows to move', u / 3, u * 2 / 3);
+  ctx.fillText('spacebar to jump', u / 3, u * 1.2);
+  ctx.fillText('f for fullscreen', u / 3, u * 1.733);
+  ctx.restore();
 }
 
 function drawDebug(): void {
+  ctx.save();
+  const u = enterPixelSpace();
   const {left, top, right, bottom} = Constants.cameraBox;
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
   ctx.lineWidth = 1;
   ctx.setLineDash([4, 4]);
-  ctx.strokeRect(left + 0.5, top + 0.5, right - left, bottom - top);
+  ctx.strokeRect(Math.round(left * u) + 0.5, Math.round(top * u) + 0.5,
+      Math.round((right - left) * u), Math.round((bottom - top) * u));
   ctx.setLineDash([]);
   ctx.fillStyle = 'rgb(200, 200, 200)';
-  ctx.font = '12px sans-serif';
+  ctx.font = hudFont(u);
   ctx.textAlign = 'right';
-  ctx.fillText(`cam ${camera.x.toFixed(0)}, ${camera.y.toFixed(0)}`,
-      width - 10, 20);
-  ctx.fillText(`todd ${todd.pos.x.toFixed(0)}, ${todd.pos.y.toFixed(0)}`,
-      width - 10, 36);
-  ctx.textAlign = 'left';
+  ctx.fillText(`cam ${camera.x.toFixed(2)}, ${camera.y.toFixed(2)}`,
+      (width - 1 / 3) * u, u * 2 / 3);
+  ctx.fillText(`todd ${todd.pos.x.toFixed(2)}, ${todd.pos.y.toFixed(2)}`,
+      (width - 1 / 3) * u, u * 1.2);
+  ctx.restore();
 }
 
 function draw(t: DOMHighResTimeStamp): void {

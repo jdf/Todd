@@ -61,7 +61,7 @@ export default class Todd {
   // The direction the eye is facing.
   bearing = 0;
 
-  // Defect in vertical size, pixels.
+  // Defect in vertical size, units.
   // Horizontal gets inverse.
   vSquish = 0;
   // per second
@@ -103,7 +103,7 @@ export default class Todd {
   // The platform has a width differing from its apparent width, depending on
   // your speed. The slower you are, the narrower the platform is.
   platformMargin(xVel: number): number {
-    return [8, 0, -5][this.speedStepFunction(xVel)];
+    return [4 / 15, 0, -1 / 6][this.speedStepFunction(xVel)];
   }
 
   getJumpImpulse(speed: number): number {
@@ -152,13 +152,13 @@ export default class Todd {
     const bodyCenterY = -(half + ysquish / 2.0);
     ctx.fillStyle = this.fillColor;
     ctx.beginPath();
-    ctx.roundRect(-bodyW / 2, bodyCenterY - bodyH / 2, bodyW, bodyH, 3);
+    ctx.roundRect(-bodyW / 2, bodyCenterY - bodyH / 2, bodyW, bodyH, 0.1);
     ctx.fill();
 
-    const eyeVCenter = -s + 8 - this.vSquish;
-    const eyeOffset = lerp(0, half - 6,
+    const eyeVCenter = -s + 4 / 15 - this.vSquish;
+    const eyeOffset = lerp(0, half - 0.2,
         Math.abs(this.bearing / Constants.maxvel));
-    const pupilOffset = lerp(0, half - 3,
+    const pupilOffset = lerp(0, half - 0.1,
         Math.abs(this.bearing / Constants.maxvel));
     let eyePos: Vec = {x: eyeOffset * Math.sign(this.bearing), y: eyeVCenter};
     let pupilPos: Vec =
@@ -170,19 +170,19 @@ export default class Todd {
     }
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.ellipse(eyePos.x, eyePos.y, 5, 5, 0, 0, Math.PI * 2);
+    ctx.ellipse(eyePos.x, eyePos.y, 1 / 6, 1 / 6, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.ellipse(pupilPos.x, pupilPos.y, 1.5, 1.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(pupilPos.x, pupilPos.y, 0.05, 0.05, 0, 0, Math.PI * 2);
     ctx.fill();
 
     if (this.blinkCumulativeTime !== -1) {
       const blinkCycle = this.blinkCumulativeTime / Constants.blinkCycleSeconds;
-      const lidTopY = eyePos.y - 6;
-      const lidHeight = 12 * Math.sin(Math.PI * blinkCycle);
+      const lidTopY = eyePos.y - 0.2;
+      const lidHeight = 0.4 * Math.sin(Math.PI * blinkCycle);
       ctx.fillStyle = this.fillColor;
-      ctx.fillRect(-half + 3, lidTopY, s - 6, lidHeight);
+      ctx.fillRect(-half + 0.1, lidTopY, s - 0.2, lidHeight);
     }
     ctx.restore();
   }
@@ -346,7 +346,7 @@ export default class Todd {
           1, Constants.eyeCenteringDurationSeconds);
     }
 
-    if (Math.abs(this.vSquishVel + this.vSquish) < 0.2) {
+    if (Math.abs(this.vSquishVel + this.vSquish) < 1 / 150) {
       // Squish damping when the energy is below threshold.
       this.vSquishVel = this.vSquish = 0;
     } else {

@@ -11,7 +11,7 @@ export default class Platform {
     ctx.fillStyle = this.fillColor;
     ctx.beginPath();
     ctx.roundRect(this.left, this.top,
-        this.right - this.left, this.bottom - this.top, 3);
+        this.right - this.left, this.bottom - this.top, 0.1);
     ctx.fill();
   }
 }

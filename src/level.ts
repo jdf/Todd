@@ -1,8 +1,11 @@
 // The one level. The world is three views wide and two and a half
 // tall; the two original platforms sit in the view the game opens on,
 // with stair-stepped wings climbing both sides and a shelf across the
-// top. Every rise is 90px, a comfortable held jump; the perch above the
-// shelf wants a running one.
+// top. Every rise is three units, a comfortable held jump; the perch
+// above the shelf wants a running one.
+//
+// Geometry is the pre-unit pixel layout over 30, pending a snap to the
+// tile grid.
 import Platform from './platform.ts';
 import {World} from './world.ts';
 
@@ -12,8 +15,8 @@ const pink = 'rgb(255, 190, 220)';
 
 export function makeLevel(): World {
   const p = (left: number, top: number, right: number, color: string) =>
-      new Platform(left, top, right, top + 20, color);
-  return new World(1800, 720, [
+      new Platform(left / 30, top / 30, right / 30, (top + 20) / 30, color);
+  return new World(60, 24, [
     // The opening view.
     p(700, 530, 850, blue),
     p(900, 630, 1100, green),
@@ -33,5 +36,5 @@ export function makeLevel(): World {
     p(120, 180, 400, pink),
     p(600, 180, 1250, pink),
     p(880, 90, 980, pink),
-  ], 40, 16);
+  ], 4 / 3, 8 / 15);
 }

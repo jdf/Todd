@@ -48,7 +48,7 @@ type Listener = (e: unknown) => void;
 const listeners = new Map<string, Listener[]>();
 
 const windowStub = {
-  // 2:1, same as the view: the canvas fills it at scale 2.
+  // 2:1, same as the view: the canvas fills it at 60px per unit.
   innerWidth: 1200,
   innerHeight: 600,
   devicePixelRatio: 2,
@@ -119,14 +119,14 @@ interface Debug {
   todd: {pos: {x: number; y: number}; sideLength: number};
 }
 const {world, camera, todd} = (windowStub as {toddDebug?: Debug}).toddDebug!;
-if (camera.x !== 600 || camera.y !== world.height - 300) {
+if (camera.x !== 20 || camera.y !== world.height - 10) {
   throw new Error(`bad opening camera ${camera.x}, ${camera.y}`);
 }
 
 // The script: frame -> keys to press (lowercase) or release (prefixed
 // with -). Starting at the center of the floor, with the green platform
-// (900..1100, top 630) just to the right and the blue one (700..850,
-// top 530) up and to the left.
+// (30..36.7, top 21) just to the right and the blue one (23.3..28.3,
+// top 17.7) up and to the left.
 const script: Record<number, string[]> = {
   30: ['ArrowLeft'],               // back up a little
   60: ['-ArrowLeft', 'ArrowRight'],
@@ -174,7 +174,7 @@ function frame(): void {
     trajectory.push([frames, round(todd.pos.x), round(todd.pos.y)]);
   }
   contactHeights.add(todd.pos.y);
-  if (camera.x > 600 && camera.x < 1200) {
+  if (camera.x > 20 && camera.x < 40) {
     cameraMoved = true;
   }
 }
@@ -190,7 +190,7 @@ while (frames < totalFrames) {
 
 if (process.env.TRACE) {
   for (const [f, x, y] of trajectory) {
-    console.log(f, x.toFixed(1), y.toFixed(1));
+    console.log(f, x.toFixed(3), y.toFixed(3));
   }
 }
 
@@ -199,20 +199,20 @@ if (ctxCalls < totalFrames) {
 }
 
 // The script must have landed on both nearby platforms.
-for (const top of [530, 630]) {
+for (const top of [530 / 30, 630 / 30]) {
   if (!contactHeights.has(top)) {
     throw new Error(`never stood on the platform at ${top}`);
   }
 }
 
-// Walls and camera: the last 600 frames run 2400px to the right, far
-// more than the distance to the wall.
+// Walls and camera: the last 600 frames run 80 units to the right,
+// far more than the distance to the wall.
 const wallX = world.width - world.wallThickness - todd.sideLength / 2;
 if (todd.pos.x !== wallX || todd.pos.y !== world.floorY) {
   throw new Error(`todd at ${todd.pos.x}, ${todd.pos.y}; wanted ${
       wallX}, ${world.floorY}`);
 }
-if (!cameraMoved || camera.x !== world.width - 600) {
+if (!cameraMoved || camera.x !== world.width - 20) {
   throw new Error(`camera at ${camera.x}, moved=${cameraMoved}`);
 }
 
