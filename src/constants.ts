@@ -58,7 +58,7 @@ export const wallImpactSquish = 0.25;
 // Pressing against his motion leans him into the effort instead.
 export const maxLean = 0.1;
 // Lean builds slowly (rate in 1/s) ...
-export const leanInRate = 1;
+export const leanInRate = .6;
 // ... and snaps when the key is released or the direction reverses.
 export const leanSnapRate = 12.5;
 
