@@ -48,8 +48,9 @@ npm test         # check + vite build + tests/smoke.ts against dist/
   view space. dt comes from the rAF timestamp and is clamped to 50ms:
   an occluded window freezes rAF, and integrating a multi-second dt
   makes the squish spring diverge. `window.toddDebug` exposes world,
-  camera, and Todd for the smoke test and console poking; `b` toggles
-  a debug overlay showing the camera box.
+  camera, Todd, and `pause()`/`step(n)`/`resume()` for the headless
+  tools and console poking; `b` toggles a debug overlay showing the
+  camera box.
 
 ## Units
 
@@ -71,7 +72,13 @@ conversion a unit was 30 logical pixels of a 600×300 view.)
   change leaves the golden untouched. A deliberate feel or level change
   regenerates it with `UPDATE_GOLDEN=1 npm test`, and the golden diff
   is part of the review. `TRACE=1` prints the trajectory.
-- Checking in a browser: a backgrounded or occluded Chrome tab pauses
-  rAF, so the sim does not advance. Bring the tab forward first.
+- Looking at the game: never drive the user's own Chrome (it steals
+  focus). Use `node tools/headless.ts <scenario.ts>`, which launches
+  headless Chrome over the DevTools protocol with no dependencies,
+  starts the dev server, and gives the scenario `key`, `wait`, `eval`,
+  `shot` (PNG screenshots), and `step(n)`: pause the game's loop and
+  advance exactly n frames at 60Hz. Prefer `step` over `wait` for
+  anything timing-sensitive; headless frame pacing is not reliable
+  without it. Scenarios and screenshots belong in the scratchpad.
 - jj colocated with git; bookmark is `main`, pushed to
   github.com/jdf/Todd.

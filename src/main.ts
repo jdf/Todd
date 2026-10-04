@@ -18,9 +18,35 @@ const todd = new Todd(world, Constants.side, 'rgb(255, 119, 0)');
 todd.setPos(world.width / 2, world.floorY);
 camera.center(todd.pos);
 
-// A handle for the headless smoke test and for poking at the sim from
-// the console.
-Object.assign(window, {toddDebug: {world, camera, todd}});
+// A handle for the headless tests and for poking at the sim from the
+// console. pause() stops the rAF loop after the pending frame; step(n)
+// then advances exactly n frames at 60Hz; resume() restarts the loop.
+let paused = false;
+let lastFrameTime = 0;
+let rafHandle = 0;
+Object.assign(window, {
+  toddDebug: {
+    world,
+    camera,
+    todd,
+    pause() {
+      paused = true;
+      cancelAnimationFrame(rafHandle);
+    },
+    step(n = 1) {
+      for (let i = 0; i < n; i++) {
+        lastFrameTime += 1000 / 60;
+        draw(lastFrameTime);
+      }
+    },
+    resume() {
+      if (paused) {
+        paused = false;
+        rafHandle = requestAnimationFrame(draw);
+      }
+    },
+  },
+});
 
 let previousFrameMillis = millis();
 
@@ -105,9 +131,13 @@ function drawDebug(): void {
 
 function draw(t: DOMHighResTimeStamp): void {
   // Clamp dt so that a long rAF gap (hidden/occluded tab) integrates as one
-  // short step; a multi-second dt makes the squish spring diverge.
-  const dt = Math.min((t - previousFrameMillis) / 1000.0, 0.05);
+  // short step; a multi-second dt makes the squish spring diverge. Never
+  // integrate backwards: a frame with an earlier timestamp than the last
+  // (a late-delivered rAF after synthetic steps) runs the exponential
+  // decays in reverse and they explode.
+  const dt = Math.min(Math.max(0, t - previousFrameMillis) / 1000.0, 0.05);
   previousFrameMillis = t;
+  lastFrameTime = t;
 
   todd.maybeBlink(dt);
 
@@ -153,7 +183,9 @@ function draw(t: DOMHighResTimeStamp): void {
     drawDebug();
   }
 
-  requestAnimationFrame(draw);
+  if (!paused) {
+    rafHandle = requestAnimationFrame(draw);
+  }
 }
 
-requestAnimationFrame(draw);
+rafHandle = requestAnimationFrame(draw);

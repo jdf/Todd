@@ -77,7 +77,8 @@ const windowStub = {
 
 let rafCallback: FrameRequestCallback | null = null;
 (globalThis as Record<string, unknown>).requestAnimationFrame =
-    (fn: FrameRequestCallback) => { rafCallback = fn; };
+    (fn: FrameRequestCallback) => { rafCallback = fn; return 1; };
+(globalThis as Record<string, unknown>).cancelAnimationFrame = () => {};
 
 const distAssets = join(dirname(fileURLToPath(import.meta.url)),
     '..', 'dist', 'assets');
@@ -117,6 +118,9 @@ interface Debug {
   world: {width: number; floorY: number; height: number; wallThickness: number};
   camera: {x: number; y: number};
   todd: {pos: {x: number; y: number}; sideLength: number; lean: number};
+  pause(): void;
+  step(n?: number): void;
+  resume(): void;
 }
 const {world, camera, todd} = (windowStub as {toddDebug?: Debug}).toddDebug!;
 if (camera.x !== 20 || camera.y !== world.height - 10) {
