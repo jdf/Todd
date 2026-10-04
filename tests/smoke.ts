@@ -116,7 +116,7 @@ expectCanvas(1800, 900, '900px', '450px');
 interface Debug {
   world: {width: number; floorY: number; height: number; wallThickness: number};
   camera: {x: number; y: number};
-  todd: {pos: {x: number; y: number}; sideLength: number};
+  todd: {pos: {x: number; y: number}; sideLength: number; lean: number};
 }
 const {world, camera, todd} = (windowStub as {toddDebug?: Debug}).toddDebug!;
 if (camera.x !== 20 || camera.y !== world.height - 10) {
@@ -171,7 +171,8 @@ function frame(): void {
   cb(now);
   frames++;
   if (frames % 5 === 0) {
-    trajectory.push([frames, round(todd.pos.x), round(todd.pos.y)]);
+    trajectory.push([frames, round(todd.pos.x), round(todd.pos.y),
+        round(todd.lean)]);
   }
   contactHeights.add(todd.pos.y);
   if (camera.x > 20 && camera.x < 40) {
@@ -189,8 +190,8 @@ while (frames < totalFrames) {
 }
 
 if (process.env.TRACE) {
-  for (const [f, x, y] of trajectory) {
-    console.log(f, x.toFixed(3), y.toFixed(3));
+  for (const [f, x, y, lean] of trajectory) {
+    console.log(f, x.toFixed(3), y.toFixed(3), lean.toFixed(3));
   }
 }
 
@@ -216,6 +217,20 @@ if (!cameraMoved || camera.x !== world.width - 20) {
   throw new Error(`camera at ${camera.x}, moved=${cameraMoved}`);
 }
 
+// Lean: running right at full speed leans right; three frames after
+// reversing to the left he already leans left; held against the wall he
+// stays leaned into it.
+const leanAt = (f: number) => trajectory[f / 5 - 1][3];
+if (!(leanAt(95) > 0.9 * 0.2)) {
+  throw new Error(`lean at full speed is ${leanAt(95)}`);
+}
+if (!(leanAt(145) < -0.05)) {
+  throw new Error(`lean just after reversing is ${leanAt(145)}`);
+}
+if (!(leanAt(1200) > 0.9 * 0.2)) {
+  throw new Error(`lean against the wall is ${leanAt(1200)}`);
+}
+
 // Trajectory against the golden.
 const goldenPath = join(dirname(fileURLToPath(import.meta.url)), 'golden.json');
 if (process.env.UPDATE_GOLDEN) {
@@ -229,11 +244,15 @@ if (process.env.UPDATE_GOLDEN) {
   }
   const tolerance = 1e-6;
   for (let i = 0; i < golden.length; i++) {
-    const [gf, gx, gy] = golden[i];
-    const [f, x, y] = trajectory[i];
-    if (gf !== f || Math.abs(gx - x) > tolerance || Math.abs(gy - y) > tolerance) {
+    if (golden[i].length !== 4) {
+      throw new Error(`golden sample ${i} has ${golden[i].length} columns`);
+    }
+    const [gf, gx, gy, gl] = golden[i];
+    const [f, x, y, l] = trajectory[i];
+    if (gf !== f || Math.abs(gx - x) > tolerance ||
+        Math.abs(gy - y) > tolerance || Math.abs(gl - l) > tolerance) {
       throw new Error(`trajectory diverges from golden at frame ${f}: ` +
-          `got ${x}, ${y}; golden ${gx}, ${gy}. ` +
+          `got ${x}, ${y}, lean ${l}; golden ${gx}, ${gy}, lean ${gl}. ` +
           `If the feel change is intended, UPDATE_GOLDEN=1 npm test.`);
     }
   }

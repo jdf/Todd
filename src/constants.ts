@@ -47,6 +47,16 @@ export const jumpImpulse = -35 / 3;      // -11.67: 2.7 high held, 3.8 running
 
 export const maxSquishVel = 8 / 3;       // 2.67
 
+// Lean: a shear of the body, as the horizontal offset of the top edge
+// relative to the feet, in units. Running at full speed leans Todd
+// into his direction of travel; the lean builds from half speed up.
+// Pressing against his motion leans him into the effort instead.
+export const maxLean = 0.2;
+// Lean builds slowly (rate in 1/s) ...
+export const leanInRate = 6;
+// ... and snaps when the key is released or the direction reverses.
+export const leanSnapRate = 25;
+
 // Max vertical velocity while holding down jump.
 export const jumpTerminalVelocity = 35 / 3;  // 11.67
 export const terminalVelocity = 55 / 3;      // 18.33

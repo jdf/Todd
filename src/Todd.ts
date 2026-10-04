@@ -69,6 +69,9 @@ export default class Todd {
 
   blinkCumulativeTime = -1;
 
+  // Horizontal offset of the top edge relative to the feet, units.
+  lean = 0;
+
   jumpState = JumpState.idle;
 
   // A quantity >= 0 when jumpState is jumping.
@@ -141,6 +144,12 @@ export default class Todd {
       ctx.translate(0, -half);
       ctx.rotate(this.tumbleAnimation.angleFor(this.pos.y));
       ctx.translate(0, half);
+    }
+
+    // Shear about the feet: y is negative above them, so a positive
+    // lean carries the top edge to the right.
+    if (this.lean !== 0) {
+      ctx.transform(1, 0, -this.lean / s, 1, 0, 0);
     }
 
     const xsquish = this.vSquish * 0.8;
@@ -368,6 +377,40 @@ export default class Todd {
       if (this.eyeCenteringAnimation.isDone()) {
         this.eyeCenteringAnimation = null;
       }
+    }
+
+    this.updateLean(dt, colliding);
+  }
+
+  private updateLean(dt: number, onGround: boolean): void {
+    const {controller} = this.world;
+    const dir = controller.left ? -1 : controller.right ? 1 : 0;
+    let target = 0;
+    let rate = Constants.leanSnapRate;
+    if (onGround && dir !== 0) {
+      if (Math.sign(this.vel.x) === -dir) {
+        // Pushing against his motion: lean into the effort at once.
+        target = dir * Constants.maxLean;
+      } else {
+        // Running: lean builds with speed from half speed to full, and
+        // while the key is held it never relaxes, so coming out of a
+        // reversal he stays leaned into the push.
+        const ramp = clamp(
+            (Math.abs(this.vel.x) / Constants.maxvel - 0.5) / 0.5, 0, 1);
+        target = dir * Constants.maxLean * ramp;
+        if (Math.sign(this.lean) === dir &&
+            Math.abs(target) < Math.abs(this.lean)) {
+          target = this.lean;
+        }
+        rate = Constants.leanInRate;
+      }
+    } else if (!onGround) {
+      // Airborne: ease back to square.
+      rate = Constants.leanInRate;
+    }
+    this.lean += (target - this.lean) * (1 - Math.exp(-rate * dt));
+    if (Math.abs(this.lean) < 1e-4) {
+      this.lean = 0;
     }
   }
 
